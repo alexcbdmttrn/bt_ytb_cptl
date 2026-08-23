@@ -40,7 +40,6 @@ ESTADO_FILE = "estado_capital_largos_en.json"
 TITULOS_FILE = "titulos_capital_largos_en_publicados.json"
 TEMAS_PUBLICADOS_FILE = "temas_largos_en_publicados.json"
 
-# Archivos de estado del bot en español (para evitar duplicados entre bots)
 ESTADO_FILE_ES = "estado_capital_largos.json"
 TITULOS_FILE_ES = "titulos_capital_largos_publicados.json"
 TEMAS_PUBLICADOS_FILE_ES = "temas_largos_publicados.json"
@@ -55,7 +54,74 @@ VOZ_FIJA = {"voz": "en-US-JennyNeural", "velocidad": "+10%", "tono": "-1Hz"}
 CONFIG_VOZ_ACTUAL = VOZ_FIJA
 
 # ================================================================
-# MÚSICA CORPORATE (opcional)
+# 🎨 VARIEDAD VISUAL: paletas, composiciones y sujetos por título
+# ================================================================
+PALETAS_VIDEO = [
+    "electric cyan and gold neon on dark navy",
+    "emerald green and silver on black",
+    "violet magenta and orange on deep blue",
+    "crimson red and gold on charcoal",
+    "teal and amber on dark slate",
+    "ice blue and white on midnight black",
+]
+
+COMPOSICIONES_BLOQUE = [
+    "extreme wide establishing shot",
+    "medium shot with shallow depth of field, main object centered",
+    "isometric 3D style scene",
+    "top-down aerial view",
+    "dramatic low-angle shot with rim lighting",
+    "macro close-up of the main object with bokeh background",
+]
+
+SUJETOS_VISUALES = [
+    (["bitcoin", "btc", "crypto", "cryptocurrency", "halving"], "a giant physical golden bitcoin coin"),
+    (["gold", "silver", "metal"], "shiny gold bars stacked inside a bank vault"),
+    (["fed", "reserve", "rate", "interest"], "a monumental central bank building with columns"),
+    (["inflation", "cpi", "price"], "a shopping cart full of groceries over a rising chart"),
+    (["etf", "fund", "institutional"], "a modern glass stock exchange building with digital tickers"),
+    (["stock", "market", "trading", "trader"], "candlestick trading charts on multiple glowing screens"),
+    (["scam", "fraud", "hack", "ftx", "collapse", "crash", "ponzi"], "a dark maze of falling dominoes made of coins"),
+    (["regulation", "law", "sec", "mica", "legal"], "a wooden gavel over legal documents and a glowing blockchain"),
+    (["ethereum", "solana", "layer", "blockchain", "technology", "rollup"], "a glowing network of interconnected blockchain nodes"),
+    (["oil", "energy", "mining"], "oil barrels and mining rigs under dramatic light"),
+    (["dollar", "forex", "currency"], "floating dollar bills and currency symbols in the air"),
+    (["house", "real estate", "mortgage"], "a miniature house model over financial charts"),
+    (["psychology", "fear", "greed", "panic"], "a human head silhouette filled with rising and falling charts"),
+    (["war", "geopolitic", "country", "china", "russia"], "a world map with glowing trade routes and tension lines"),
+]
+
+def detectar_sujeto_visual(texto_ref):
+    t = (texto_ref or "").lower()
+    for keywords, sujeto in SUJETOS_VISUALES:
+        if any(k in t for k in keywords):
+            return sujeto
+    return "a cinematic financial scene with glowing charts, coins and data visualizations"
+
+def construir_prompt_segmento(titulo, prompt_original, idx_bloque, paleta):
+    """Prompt ADAPTADO AL TÍTULO con composición distinta por bloque."""
+    sujeto = detectar_sujeto_visual(titulo + " " + (prompt_original or ""))
+    composicion = COMPOSICIONES_BLOQUE[idx_bloque % len(COMPOSICIONES_BLOQUE)]
+    return (
+        f"{sujeto}, {composicion}, color palette of {paleta}, "
+        "cinematic financial documentary style, hyperrealistic, 8k resolution, "
+        "dramatic lighting, high contrast, sharp focus, "
+        "no people, no faces, no hands, no text, no letters, no numbers, no logos, "
+        "no watermark, no black box, no rectangle overlay"
+    )
+
+def construir_prompt_miniatura(titulo, prompt_original, paleta):
+    """Fondo de miniatura ADAPTADO AL TÍTULO con espacio limpio a la derecha."""
+    sujeto = detectar_sujeto_visual(titulo + " " + (prompt_original or ""))
+    return (
+        f"{sujeto}, dramatic composition with clean dark empty space on the RIGHT side, "
+        f"color palette of {paleta}, youtube finance thumbnail style, hyperrealistic, 8k, "
+        "high contrast, cinematic lighting, sharp focus, no people, no faces, no text, "
+        "no letters, no numbers, no watermark, no black box"
+    )
+
+# ================================================================
+# MÚSICA CORPORATE
 # ================================================================
 FONDOS_DISPONIBLES = [
     "The Ascent.mp3",
@@ -104,39 +170,28 @@ def guardar_estado(estado):
         }, f, indent=2, ensure_ascii=False)
 
 def cargar_titulos_publicados():
-    # Cargar títulos del bot en inglés
     try:
         with open(TITULOS_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            titulos_en = data.get("titulos", [])
+            titulos_en = json.load(f).get("titulos", [])
     except:
         titulos_en = []
-    
-    # Cargar títulos del bot en español (para evitar duplicados)
     try:
         with open(TITULOS_FILE_ES, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            titulos_es = data.get("titulos", [])
+            titulos_es = json.load(f).get("titulos", [])
     except:
         titulos_es = []
-    
-    # Combinar y eliminar duplicados
-    todos = list(set(titulos_en + titulos_es))
-    return {"titulos": todos}
+    return {"titulos": list(set(titulos_en + titulos_es))}
 
 def guardar_titulo_publicado(titulo):
-    data = cargar_titulos_publicados()
-    if titulo not in data["titulos"]:
-        # Guardar solo en el archivo del bot en inglés
-        try:
-            with open(TITULOS_FILE, "r", encoding="utf-8") as f:
-                data_en = json.load(f)
-        except:
-            data_en = {"titulos": []}
-        if titulo not in data_en["titulos"]:
-            data_en["titulos"].append(titulo)
-            with open(TITULOS_FILE, "w", encoding="utf-8") as f:
-                json.dump(data_en, f, indent=2, ensure_ascii=False)
+    try:
+        with open(TITULOS_FILE, "r", encoding="utf-8") as f:
+            data_en = json.load(f)
+    except:
+        data_en = {"titulos": []}
+    if titulo not in data_en["titulos"]:
+        data_en["titulos"].append(titulo)
+        with open(TITULOS_FILE, "w", encoding="utf-8") as f:
+            json.dump(data_en, f, indent=2, ensure_ascii=False)
 
 def titulo_ya_publicado(titulo):
     data = cargar_titulos_publicados()
@@ -175,39 +230,29 @@ def incrementar_publicaciones_hoy():
     guardar_estado(estado)
 
 def cargar_temas_publicados():
-    # Cargar temas del bot en inglés
     try:
         with open(TEMAS_PUBLICADOS_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            temas_en = data.get("temas", [])
+            temas_en = json.load(f).get("temas", [])
     except:
         temas_en = []
-    
-    # Cargar temas del bot en español
     try:
         with open(TEMAS_PUBLICADOS_FILE_ES, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            temas_es = data.get("temas", [])
+            temas_es = json.load(f).get("temas", [])
     except:
         temas_es = []
-    
-    # Combinar
     return temas_en + temas_es
 
 def guardar_tema_publicado(tema, tipo):
-    temas = cargar_temas_publicados()
-    tema_data = {
-        "tema": tema,
-        "tipo": tipo,
-        "fecha": datetime.now(ZoneInfo("America/Mexico_City")).strftime("%Y-%m-%d")
-    }
-    # Guardar solo en el archivo del bot en inglés
     try:
         with open(TEMAS_PUBLICADOS_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
     except:
         data = {"temas": []}
-    data["temas"].append(tema_data)
+    data["temas"].append({
+        "tema": tema,
+        "tipo": tipo,
+        "fecha": datetime.now(ZoneInfo("America/Mexico_City")).strftime("%Y-%m-%d")
+    })
     if len(data["temas"]) > 200:
         data["temas"] = data["temas"][-200:]
     with open(TEMAS_PUBLICADOS_FILE, "w", encoding="utf-8") as f:
@@ -350,48 +395,25 @@ RESPONSE IN JSON:
         return None
 
 # ================================================================
-# SANITIZAR TAGS MEJORADO (Robusto para YouTube)
+# SANITIZAR TAGS MEJORADO
 # ================================================================
 def sanitizar_tags(tags_str, max_chars=500):
-    """
-    Limpia y formatea tags para YouTube.
-    - Solo caracteres alfanuméricos, espacios y guiones.
-    - Elimina caracteres especiales (#, $, %, etc.)
-    - Elimina duplicados.
-    - No excede max_chars.
-    """
     if not tags_str:
         return []
-    
-    # Separar por comas
     raw_tags = [t.strip() for t in tags_str.split(",") if t.strip()]
-    
-    # Limpiar cada tag
     cleaned = []
     for tag in raw_tags:
-        # Eliminar caracteres no permitidos (solo letras, números, espacios, guiones)
-        clean = re.sub(r'[^a-zA-Z0-9áéíóúüñÁÉÍÓÚÜÑ\s\-]', '', tag)
-        clean = clean.strip()
-        # Descartar tags vacíos o demasiado cortos
+        clean = re.sub(r'[^a-zA-Z0-9áéíóúüñÁÉÍÓÚÜÑ\s\-]', '', tag).strip()
         if clean and len(clean) > 1:
             cleaned.append(clean)
-    
-    # Eliminar duplicados
     cleaned = list(dict.fromkeys(cleaned))
-    
-    # Construir la cadena final sin exceder max_chars
     result = ""
     for tag in cleaned:
-        if result:
-            test = result + "," + tag
-        else:
-            test = tag
+        test = result + "," + tag if result else tag
         if len(test) <= max_chars:
             result = test
         else:
             break
-    
-    # Devolver como lista (no como string)
     return result.split(",") if result else []
 
 # ================================================================
@@ -449,9 +471,7 @@ def generar_guion_largo(tipo, fecha_actual, idea=None):
     titulos_pub = cargar_titulos_publicados()["titulos"][-10:]
     titulos_referencia = "\n".join([f"- {t}" for t in titulos_pub]) if titulos_pub else "None yet."
 
-    # AMPLIA LISTA DE TEMAS REALES (60+ temas variados)
     TEMAS_REALES = [
-        # Noticias macro
         "Federal Reserve interest rate decision and its impact on crypto",
         "Inflation report: CPI data exceeds expectations",
         "Bitcoin ETF inflows reach record high",
@@ -462,7 +482,6 @@ def generar_guion_largo(tipo, fecha_actual, idea=None):
         "Global recession fears: are we heading for a downturn?",
         "US jobs report beats estimates: what it means for markets",
         "Japan's interest rate policy and crypto markets",
-        # Educación
         "How to build a diversified crypto portfolio",
         "Understanding market cycles: bull and bear markets explained",
         "How to read financial statements for crypto projects",
@@ -473,7 +492,6 @@ def generar_guion_largo(tipo, fecha_actual, idea=None):
         "What is a smart contract and how does it work?",
         "What is an ETF and how does it work?",
         "What is dollar-cost averaging and why it works?",
-        # Psicología
         "Why do most traders lose money? Psychology explained",
         "How to overcome FOMO in crypto",
         "The importance of risk management in investing",
@@ -481,7 +499,6 @@ def generar_guion_largo(tipo, fecha_actual, idea=None):
         "How to stay calm during market crashes",
         "What is the 'fear and greed index' and why it matters?",
         "The psychology of market cycles: from euphoria to despair",
-        # Análisis de mercado
         "Bitcoin dominance: what it means for altcoins",
         "Ethereum's transition to proof-of-stake: the full story",
         "Solana vs. Ethereum: which is better for the future?",
@@ -490,41 +507,33 @@ def generar_guion_largo(tipo, fecha_actual, idea=None):
         "RWA tokenization: the next big trend",
         "Altcoin season: what it is and when it happens",
         "Bitcoin halving: what it is and why it matters",
-        # Eventos históricos
         "What we learned from the FTX collapse",
         "The 2008 financial crisis and Bitcoin's origin",
         "Mt. Gox hack: lessons for investors",
         "The 2020 COVID crash and recovery",
         "How the 2022 bear market shaped crypto",
         "The 2017 bull run and its aftermath",
-        # Consejos prácticos
         "How to use dollar-cost averaging effectively",
         "Why you should never share your private keys",
         "How to spot a crypto scam early",
         "How to choose a reliable exchange",
         "How to secure your crypto with a hardware wallet",
         "How to research a cryptocurrency before buying",
-        "How to create a diversified crypto portfolio",
-        # Mitos
         "Is Bitcoin a bubble? Debunking the myth",
         "Is gold always a safe haven?",
         "Can you get rich overnight with crypto? The truth",
         "Are all altcoins scams? The reality",
         "Is crypto dead after a crash?",
-        # Datos sorprendentes
         "70% of retail traders lose money: the data behind the statistic",
         "Bitcoin's energy consumption: facts vs. fiction",
         "How much crypto is held by institutions?",
         "The average crypto investor's portfolio composition",
-        # Tecnología
         "What is a rollup? Layer 2 explained",
         "Zero-knowledge proofs: what they are and why they matter",
         "The future of blockchain interoperability",
-        # Regulación
         "Crypto regulation in the US: what's changing",
         "Europe's MiCA regulation explained",
         "How regulation affects crypto prices",
-        # DeFi y Web3
         "What is Uniswap? DeFi explained",
         "Yield farming: what it is and how it works",
         "What are DAOs? Decentralized organizations explained",
@@ -583,17 +592,17 @@ You are a PROFESSIONAL SCRIPTWRITER and FINANCE EXPERT. Write a DETAILED script 
 - Include rhetorical questions and analogies.
 - DO NOT use specific past dates.
 
-🎯 IMAGES (prompts in English):
-Each block will have a specific image prompt for Agnes.
+🎯 IMAGE PROMPTS (CRITICAL FOR VARIETY):
+Each block MUST have a DIFFERENT visual subject related to the TITLE topic.
+- NEVER repeat "golden bitcoin coin" in every block. Vary: charts, buildings, vaults, objects, metaphors, maps, technology.
 - Style: cinematic, neon, 8k.
-- PROHIBITED: people, faces, close-up faces.
-- Allowed: graphics, coins, data, visualizations, maps, technology.
+- PROHIBITED: people, faces, close-up faces, text, letters, numbers, black boxes.
 
 🎯 THUMBNAIL DESIGN (IMPORTANT):
 Create a prompt in ENGLISH for Agnes to generate the BACKGROUND of the thumbnail.
 - Style: "crypto YouTube thumbnail", neon, high contrast, cinematic, hyperrealistic.
+- The visual MUST represent the TITLE topic (gold bars if gold, bank building if Fed, charts if trading...).
 - PROHIBITED: people, faces, text.
-- Allowed: a visual representation of the topic (e.g., a giant coin, an upward graph, a path with an X at the end).
 - Size: 1280x720 (horizontal).
 
 🎯 TAGS RULES (CRITICAL FOR YOUTUBE):
@@ -665,12 +674,12 @@ Create a prompt in ENGLISH for Agnes to generate the BACKGROUND of the thumbnail
             
             if palabras < 900:
                 print(f"⚠️ Script still short ({palabras} words). Reducing voice speed to +5%.")
-                global VOZ_FIJA
+                global VOZ_FIJA, CONFIG_VOZ_ACTUAL
                 VOZ_FIJA = {"voz": "en-US-JennyNeural", "velocidad": "+5%", "tono": "-1Hz"}
                 CONFIG_VOZ_ACTUAL = VOZ_FIJA
             
             if "thumbnail_prompt" not in result:
-                result["thumbnail_prompt"] = "cinematic wide shot of a glowing path leading to a golden Bitcoin, neon cyan and gold lighting, high contrast, dark background, hyperrealistic, 8k, no people, no text, no watermark"
+                result["thumbnail_prompt"] = ""
             
             return result, tema_elegido, restriccion
         except Exception as e:
@@ -706,16 +715,24 @@ def filtrar_prompt_miniatura(prompt):
     return prompt_filtrado
 
 # ================================================================
-# GENERAR IMAGEN HORIZONTAL CON TIMEOUT AUMENTADO (180s)
+# 🖼️ GENERAR IMAGEN HORIZONTAL (SIN enhance_prompt, SIN cajas negras)
 # ================================================================
 def generar_imagen_horizontal(prompt, intentos=3):
     prompt = prompt[:950]
-    prompt_completo = f"{prompt}, hyperrealistic, 8k, cinematic lighting, electric cyan neon, high contrast, sharp focus, wide shot, environment as main subject, no close-up face, no text, no watermark"
+    prompt_completo = (
+        f"{prompt}, hyperrealistic, 8k, cinematic lighting, high contrast, sharp focus, "
+        "wide shot, environment as main subject, no people, no faces, no text, no watermark"
+    )
     prompt_completo = prompt_completo[:950]
     
     url = "https://apihub.agnes-ai.com/v1/images/generations"
     headers = {"Authorization": f"Bearer {AGNES_API_KEY}", "Content-Type": "application/json"}
-    negative = "multiple people, crowd, close-up face, portrait, headshot, gore, blood, clones, deformed, blurry, text, watermark, low quality"
+    negative = (
+        "people, person, human, face, hands, crowd, portrait, close-up face, "
+        "text, letters, words, numbers, digits, labels, captions, watermark, logo, signature, "
+        "black box, black rectangle, censored, redacted, text box, UI overlay, frame, border, "
+        "gore, blood, clones, deformed, mutated, blurry, low quality, oversaturated"
+    )
     payload = {
         "model": "agnes-image-2.1-flash",
         "prompt": prompt_completo,
@@ -723,12 +740,10 @@ def generar_imagen_horizontal(prompt, intentos=3):
         "width": 1280,
         "height": 720,
         "num_images": 1,
-        "enhance_prompt": True
     }
     for intento in range(intentos):
         try:
             print(f"   🖼️ Sending prompt to Agnes (attempt {intento+1}/{intentos})...")
-            # TIMEOUT AUMENTADO A 180 SEGUNDOS (3 MINUTOS)
             r = requests.post(url, headers=headers, json=payload, timeout=180)
             if r.status_code == 200:
                 data = r.json()
@@ -754,13 +769,36 @@ def generar_fondo_solido(color=(20, 20, 50), ancho=1280, alto=720):
     return path
 
 # ================================================================
-# MINIATURA PROFESIONAL MEJORADA (sin el rectángulo con borde)
+# 🔤 FUENTE GRUESA REAL (descarga Anton, fallback a DejaVu del sistema)
+# ================================================================
+def obtener_ruta_fuente():
+    if not os.path.exists("Anton.ttf"):
+        try:
+            print("📥 Downloading Anton font...")
+            url = "https://github.com/google/fonts/raw/main/ofl/anton/Anton-Regular.ttf"
+            r = requests.get(url, timeout=30)
+            if r.status_code == 200 and len(r.content) > 10000:
+                with open("Anton.ttf", "wb") as f:
+                    f.write(r.content)
+                print("✅ Anton font downloaded")
+        except Exception as e:
+            print(f"⚠️ Font download failed: {e}")
+    rutas = [
+        "Anton.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "fonts/Anton.ttf",
+    ]
+    for ruta in rutas:
+        if os.path.exists(ruta):
+            return ruta
+    return None
+
+# ================================================================
+# 🖼️ MINIATURA PROFESIONAL (SIN rectángulo negro, texto grande y legible)
 # ================================================================
 def crear_miniatura_profesional(prompt_miniatura, texto_portada, salida="miniatura_largo_en.jpg"):
     print("🖼️ Generating professional thumbnail...")
     prompt_filtrado = filtrar_prompt_miniatura(prompt_miniatura)
-    print(f"   📝 Original prompt: {prompt_miniatura[:200]}...")
-    print(f"   📝 Filtered prompt: {prompt_filtrado[:200]}...")
 
     prompts_a_intentar = [
         prompt_filtrado,
@@ -770,6 +808,8 @@ def crear_miniatura_profesional(prompt_miniatura, texto_portada, salida="miniatu
 
     fondo_url = None
     for intento, prompt in enumerate(prompts_a_intentar[:3], start=1):
+        if not prompt:
+            continue
         print(f"   🖼️ Attempt {intento}/3 generating thumbnail...")
         fondo_url = generar_imagen_horizontal(prompt, intentos=1)
         if fondo_url:
@@ -780,8 +820,7 @@ def crear_miniatura_profesional(prompt_miniatura, texto_portada, salida="miniatu
 
     if not fondo_url:
         print("⚠️ Could not generate background, using placeholder")
-        fondo_path = generar_fondo_solido()
-        fondo_url = fondo_path
+        fondo_url = generar_fondo_solido()
 
     try:
         if fondo_url.startswith("http"):
@@ -793,56 +832,65 @@ def crear_miniatura_profesional(prompt_miniatura, texto_portada, salida="miniatu
                     f.write(r.content)
             except Exception as e:
                 print(f"⚠️ Error downloading background: {e}")
-                fondo_path = generar_fondo_solido()
-                img_path = fondo_path
+                img_path = generar_fondo_solido()
         else:
             img_path = fondo_url
         
         img = Image.open(img_path)
-        img = ImageOps.fit(img, (1280, 720), Image.Resampling.LANCZOS)
+        img = ImageOps.fit(img, (1280, 720), Image.Resampling.LANCZOS).convert("RGB")
         draw = ImageDraw.Draw(img)
         
-        texto = texto_portada.upper().strip()
-        lineas = texto.split()
-        if len(lineas) > 3:
-            texto = ' '.join(lineas[:3])
+        texto = texto_portada.upper().strip() or "WATCH THIS"
+        palabras = texto.split()
+        if len(palabras) > 3:
+            texto = ' '.join(palabras[:3])
+        
+        # Dividir en máximo 2 líneas para mejor ajuste
+        palabras = texto.split()
+        if len(palabras) > 1:
+            mitad = len(palabras) // 2
+            lineas = [' '.join(palabras[:mitad + 1]), ' '.join(palabras[mitad + 1:])]
+            lineas = [l for l in lineas if l]
         else:
-            texto = ' '.join(lineas)
+            lineas = [texto]
         
-        try:
-            font = ImageFont.truetype("fonts/Anton.ttf", 130)
-        except:
-            try:
-                font = ImageFont.truetype("/usr/share/fonts/truetype/msttcorefonts/Impact.ttf", 130)
-            except:
-                try:
-                    font = ImageFont.truetype("Impact.ttf", 130)
-                except:
-                    font = ImageFont.load_default()
+        ruta_fuente = obtener_ruta_fuente()
         
-        bbox = draw.textbbox((0, 0), texto, font=font)
-        text_w = bbox[2] - bbox[0]
-        text_h = bbox[3] - bbox[1]
-        x = (1280 - text_w) // 2
-        y = (720 - text_h) // 2 + 60
+        # Auto-ajuste de tamaño de fuente (máx 1150px de ancho)
+        size = 150
+        while size >= 60:
+            if ruta_fuente:
+                font = ImageFont.truetype(ruta_fuente, size)
+            else:
+                font = ImageFont.load_default()
+            ancho_max = 0
+            for linea in lineas:
+                bbox = draw.textbbox((0, 0), linea, font=font)
+                ancho_max = max(ancho_max, bbox[2] - bbox[0])
+            if ancho_max <= 1150:
+                break
+            size -= 10
         
-        # Fondo oscuro detrás del texto (sin borde)
-        padding = 40
-        bg_x = x - padding
-        bg_y = y - padding - 10
-        bg_w = text_w + padding * 2
-        bg_h = text_h + padding * 2 + 20
-        overlay = Image.new('RGBA', img.size, (0, 0, 0, 0))
-        overlay_draw = ImageDraw.Draw(overlay)
-        overlay_draw.rectangle([bg_x, bg_y, bg_x + bg_w, bg_y + bg_h], fill=(0, 0, 0, 200))
-        img = Image.alpha_composite(img.convert('RGBA'), overlay).convert('RGB')
-        draw = ImageDraw.Draw(img)
+        alto_linea = size + 15
+        alto_total = alto_linea * len(lineas)
+        y_inicio = (720 - alto_total) // 2
         
-        for dx, dy in [(-5, -5), (-5, 5), (5, -5), (5, 5), (0, 8), (0, -8), (8, 0), (-8, 0)]:
-            draw.text((x + dx, y + dy), texto, fill='black', font=font)
-        for dx, dy in [(-2, -2), (-2, 2), (2, -2), (2, 2)]:
-            draw.text((x + dx, y + dy), texto, fill='white', font=font)
-        draw.text((x, y), texto, fill=(255, 255, 80), font=font)
+        # SIN rectángulo negro: solo texto con contorno grueso y sombra
+        for i, linea in enumerate(lineas):
+            bbox = draw.textbbox((0, 0), linea, font=font)
+            text_w = bbox[2] - bbox[0]
+            text_h = bbox[3] - bbox[1]
+            x = 1280 - text_w - 60  # Alineado a la derecha (espacio limpio del prompt)
+            y = y_inicio + i * alto_linea
+            
+            # Sombra proyectada
+            draw.text((x + 6, y + 8), linea, fill=(0, 0, 0), font=font)
+            # Contorno negro grueso
+            for dx in range(-6, 7, 2):
+                for dy in range(-6, 7, 2):
+                    draw.text((x + dx, y + dy), linea, fill='black', font=font)
+            # Relleno amarillo brillante
+            draw.text((x, y), linea, fill=(255, 230, 60), font=font)
         
         img.save(salida)
         print(f"✅ Professional thumbnail created: {salida}")
@@ -944,14 +992,9 @@ def crear_capitulo_visual_pil(titulo_capitulo, timestamp, duracion=3, ancho=1280
         x = 20
         y = 15
         padding = 8
-        bg_x = x - padding
-        bg_y = y - padding
-        bg_w = text_w + padding * 2
-        bg_h = text_h + padding * 2
         overlay = Image.new('RGBA', (ancho, alto), (0, 0, 0, 0))
         overlay_draw = ImageDraw.Draw(overlay)
-        overlay_draw.rectangle([bg_x, bg_y, bg_x + bg_w, bg_y + bg_h], fill=(0, 0, 0, 160))
-        overlay_draw.rectangle([bg_x, bg_y, bg_x + bg_w, bg_y + bg_h], outline=(0, 180, 255, 80), width=1)
+        overlay_draw.rectangle([x - padding, y - padding, x - padding + text_w + padding * 2, y - padding + text_h + padding * 2], fill=(0, 0, 0, 160))
         img = Image.alpha_composite(img, overlay)
         draw = ImageDraw.Draw(img)
         draw.text((x+1, y+1), texto, fill='black', font=font)
@@ -1012,7 +1055,6 @@ def montar_video_largo(recursos, fondo_path, salida="largo_capital_en.mp4", capi
         audio_path = rec["audio_path"]
         duracion = rec["duracion"]
         texto = rec.get("texto", "")
-        bloque = rec.get("bloque", "")
         
         try:
             if img_url.startswith("http"):
@@ -1095,7 +1137,7 @@ def montar_video_largo(recursos, fondo_path, salida="largo_capital_en.mp4", capi
     return salida
 
 # ================================================================
-# SUBIR A YOUTUBE (CON CATEGORÍA 22: PEOPLE & BLOGS Y VALIDACIÓN DE TAGS)
+# SUBIR A YOUTUBE
 # ================================================================
 def subir_a_youtube(video_path, titulo, etiquetas_str, descripcion, miniatura_path=None):
     try:
@@ -1105,23 +1147,17 @@ def subir_a_youtube(video_path, titulo, etiquetas_str, descripcion, miniatura_pa
         print(f"❌ Error authenticating: {e}")
         sys.exit(1)
     
-    # Limpiar y validar tags
     tags = sanitizar_tags(etiquetas_str)
-    
-    # Si no hay tags válidos, usar unos por defecto
     if not tags:
         print("⚠️ No valid tags found. Using default tags.")
         tags = ["finance", "investing", "crypto", "trading", "analysis"]
     
-    # Asegurar que no excedan 500 caracteres
     tags_str_final = ",".join(tags)
     if len(tags_str_final) > 500:
-        # Recortar
-        tags = tags[:10]  # Tomar solo los primeros 10
+        tags = tags[:10]
         tags_str_final = ",".join(tags)
         if len(tags_str_final) > 500:
             tags = tags[:5]
-            tags_str_final = ",".join(tags)
     
     print(f"📝 Final tags ({len(tags)}): {tags_str_final}")
     
@@ -1132,7 +1168,7 @@ def subir_a_youtube(video_path, titulo, etiquetas_str, descripcion, miniatura_pa
         "snippet": {
             "title": titulo[:100],
             "description": descripcion_final[:5000],
-            "tags": tags[:30],  # YouTube permite hasta 30 tags
+            "tags": tags[:30],
             "categoryId": "22",
             "defaultLanguage": "en",
             "defaultAudioLanguage": "en",
@@ -1181,23 +1217,17 @@ def limpiar_archivos_temporales():
     print("✅ Cleanup completed")
 
 # ================================================================
-# MAIN (CON REUTILIZACIÓN DE IMÁGENES Y CONTROL DE DUPLICADOS)
+# MAIN (IMÁGENES ADAPTADAS AL TÍTULO + SIN CAJAS NEGRAS)
 # ================================================================
 def main():
     print("="*60)
     print("🎬 Capital Minds - LONG VIDEO BOT (ENGLISH VERSION)")
-    print("   ✓ 25+ different formats to ensure variety")
-    print("   ✓ 60+ real financial topics")
-    print("   ✓ Challenge → Process → Result structure")
-    print("   ✓ Curiosity-driven titles (no past dates)")
-    print("   ✓ Enhanced thumbnail with neon text")
-    print("   ✓ 10s pauses between generations")
-    print("   ✓ Today's news (NewsAPI)")
-    print("   ✓ Category: People & Blogs (22)")
-    print("   ✓ IMAGE REUSE: falls back to previous/next segment")
-    print("   ✓ DUPLICATE CONTROL: checks Spanish bot's history too")
-    print("   ✓ TAGS VALIDATION: ensures YouTube-compatible tags")
-    print("   ✓ Formats: News, Education, Psychology, Analysis, History, Comparisons, Tips, Myths, Expert Opinions, Data, Interviews, Country Analysis, Blockchain Tech, Trading, Regulation, Sustainability, Success/Failure Stories, Predictions, Technical Analysis, Exchange Comparisons, Security, DeFi, NFTs, Geopolitics")
+    print("   ✓ TITLE-ADAPTED IMAGES: visual subject from title keywords")
+    print("   ✓ 6 different compositions (one per block)")
+    print("   ✓ Random color palette per video (variety)")
+    print("   ✓ NO black boxes: overlay removed + real font download")
+    print("   ✓ Negative prompt blocks black boxes/labels/numbers")
+    print("   ✓ 25+ formats, 60+ topics, duplicate control ES/EN")
     print("="*60)
 
     tz_mexico = ZoneInfo("America/Mexico_City")
@@ -1222,6 +1252,10 @@ def main():
     estado = cargar_estado()
     fondo_path = seleccionar_fondo_disponible(estado)
     
+    # 🎨 Paleta aleatoria por video → cada video tiene un look distinto
+    paleta_video = random.choice(PALETAS_VIDEO)
+    print(f"🎨 Color palette for this video: {paleta_video}")
+    
     print("💡 Generating video idea...")
     idea_data = generar_idea_video_largo(tipo, fecha_formateada)
     if idea_data and "best_idea" in idea_data:
@@ -1237,40 +1271,42 @@ def main():
     descripcion = guion["description"]
     tags_str = guion.get("tags", "")
     segmentos = guion["segments"]
-    palabras_portada = guion.get("cover_words", "CHALLENGE")
+    palabras_portada = guion.get("cover_words", "WATCH THIS")
     prompt_miniatura = guion.get("thumbnail_prompt", "")
+    
+    print(f"🏷️ Title: {titulo}")
+    print(f"🎯 Visual subject detected: {detectar_sujeto_visual(titulo)}")
     
     capitulos = []
     for seg in segmentos:
         capitulos.append({"bloque": seg.get("block", "CHAPTER")})
     
     # ============================================================
-    # NUEVA LÓGICA DE GENERACIÓN Y REUTILIZACIÓN DE IMÁGENES
+    # PRIMERA PASADA: imágenes ADAPTADAS AL TÍTULO por segmento
     # ============================================================
-    print("\n🖼️ FIRST PASS: Generating images for all segments...")
+    print("\n🖼️ FIRST PASS: Generating title-adapted images for all segments...")
     imagenes_generadas = []
     for idx, seg in enumerate(segmentos):
         print(f"🎬 Segment {idx+1}/{len(segmentos)} - {seg.get('block', '')}")
-        prompt_img = seg["image_prompt"]
+        prompt_img = construir_prompt_segmento(titulo, seg.get("image_prompt", ""), idx, paleta_video)
+        print(f"   📝 Prompt: {prompt_img[:120]}...")
         img_url = generar_imagen_horizontal(prompt_img, intentos=3)
         imagenes_generadas.append(img_url)
         if img_url:
             print(f"   ✅ Image generated successfully.")
         else:
             print(f"   ❌ Failed to generate image.")
-        time.sleep(10)  # Pausa entre segmentos para no saturar la API
+        time.sleep(10)
 
     # ============================================================
-    # SEGUNDA PASADA: Asignar imágenes a los que fallaron
+    # SEGUNDA PASADA: reutilizar imágenes para los que fallaron
     # ============================================================
     print("\n🔄 SECOND PASS: Reusing images for failed segments...")
 
     def obtener_imagen_disponible(idx, imagenes):
-        # Buscar hacia atrás
         for i in range(idx - 1, -1, -1):
             if imagenes[i] is not None:
                 return imagenes[i], f"previous segment {i+1}"
-        # Buscar hacia adelante
         for i in range(idx + 1, len(imagenes)):
             if imagenes[i] is not None:
                 return imagenes[i], f"next segment {i+1}"
@@ -1283,12 +1319,11 @@ def main():
                 imagenes_generadas[idx] = img_disponible
                 print(f"   ✅ Segment {idx+1}: using image from {origen}")
             else:
-                # Si no hay ninguna imagen disponible en ningún segmento
                 imagenes_generadas[idx] = generar_fondo_solido()
                 print(f"   🖼️ Segment {idx+1}: using solid background (no image available)")
 
     # ============================================================
-    # TERCERA PASADA: Generar audio y construir recursos
+    # TERCERA PASADA: audio y recursos
     # ============================================================
     print("\n🎵 Generating audio and building resources...")
     recursos = []
@@ -1310,7 +1345,7 @@ def main():
             "texto": seg["text"],
             "bloque": seg.get("block", "")
         })
-        time.sleep(2)  # Pequeña pausa entre audios
+        time.sleep(2)
 
     if not recursos:
         print("❌ No resources generated.")
@@ -1320,13 +1355,13 @@ def main():
     print(f"🎬 Video assembled: {video_path}")
     
     miniatura_path = None
-    if prompt_miniatura:
-        print("🖼️ Generating professional thumbnail...")
-        miniatura_path = crear_miniatura_profesional(
-            prompt_miniatura,
-            palabras_portada,
-            "miniatura_largo_en.jpg"
-        )
+    print("🖼️ Generating professional thumbnail (title-adapted, no black box)...")
+    prompt_miniatura_final = construir_prompt_miniatura(titulo, prompt_miniatura, paleta_video)
+    miniatura_path = crear_miniatura_profesional(
+        prompt_miniatura_final,
+        palabras_portada,
+        "miniatura_largo_en.jpg"
+    )
     
     video_id = subir_a_youtube(video_path, titulo, tags_str, descripcion, miniatura_path)
     
