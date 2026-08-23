@@ -98,14 +98,10 @@ def detectar_sujeto_visual(texto_ref):
     return "a cinematic financial scene with glowing charts, coins and data visualizations"
 
 # ================================================================
-# CONSTRUIR PROMPT DE IMAGEN POR SEGMENTO (USA EL PROMPT DE DEEPSEEK)
+# CONSTRUIR PROMPT DE IMAGEN POR SEGMENTO (USANDO PROMPT DE DEEPSEEK)
 # ================================================================
 def construir_prompt_segmento(titulo, prompt_deepseek, idx_bloque, paleta):
-    """
-    Enriquece el prompt de imagen generado por DeepSeek (específico para el segmento)
-    con la paleta de colores, composición y restricciones.
-    Si DeepSeek no dio un prompt detallado, usa un fallback basado en el título.
-    """
+    """Enriquece el prompt de DeepSeek con paleta y composición para vertical."""
     if prompt_deepseek and len(prompt_deepseek.split()) > 5:
         base_prompt = prompt_deepseek
     else:
@@ -118,7 +114,7 @@ def construir_prompt_segmento(titulo, prompt_deepseek, idx_bloque, paleta):
         "cinematic financial documentary style, hyperrealistic, 8k resolution, "
         "dramatic lighting, high contrast, sharp focus, "
         "no people, no faces, no hands, no text, no letters, no numbers, no logos, "
-        "no watermark, no black box, no rectangle overlay"
+        "no watermark, no black box, no rectangle overlay, vertical 9:16"
     )
 
 def construir_prompt_miniatura(titulo, prompt_deepseek, paleta):
@@ -134,6 +130,27 @@ def construir_prompt_miniatura(titulo, prompt_deepseek, paleta):
         "hyperrealistic, 8k, high contrast, cinematic lighting, sharp focus, "
         "no people, no faces, no text, no letters, no numbers, no watermark, no black box"
     )
+
+# ================================================================
+# 🏷️ SANITIZAR HASHTAGS
+# ================================================================
+def sanitizar_hashtags(hashtags_str, max_tags=6):
+    """Limpia y formatea hashtags para YouTube/Rumble."""
+    if not hashtags_str:
+        return ""
+    tags = hashtags_str.split()
+    cleaned = []
+    for tag in tags:
+        tag = tag.strip()
+        if not tag:
+            continue
+        if not tag.startswith("#"):
+            tag = "#" + tag
+        tag = re.sub(r'[^a-zA-Z0-9#]', '', tag)
+        if tag and len(tag) > 1:
+            cleaned.append(tag)
+    cleaned = cleaned[:max_tags]
+    return " ".join(cleaned)
 
 # ================================================================
 # MÚSICA CORPORATE
@@ -447,7 +464,7 @@ RESPONSE IN JSON:
         return None
 
 # ================================================================
-# GENERAR GUION SHORT (CON PROMPTS DE IMAGEN POR SEGMENTO)
+# GENERAR GUION SHORT (CON PROMPTS DE IMAGEN POR SEGMENTO Y HASHTAGS DINÁMICOS)
 # ================================================================
 def generar_guion_financiero(tipo, idea=None, fecha_actual=None):
     if not fecha_actual:
@@ -562,11 +579,17 @@ You are a FINANCE EXPERT and EDUCATIONAL CONTENT CREATOR for YouTube SHORTS.
 3. Tone: Educational, informative, and engaging – NOT sensationalist.
 4. Numbers written with LETTERS (not "400,500").
 
+🎯 TITLE OPTIMIZATION (IMPORTANT):
+- Make the title more clickable but NOT sensationalist.
+- Add a curiosity gap (e.g., "Why..." instead of "This is why").
+- Use power words like "The Truth About", "What You Need to Know".
+- Keep the title between 50-60 characters.
+- Use 1 emoji maximum.
+
 🎯 SEO RULES:
-1. TITLE: 50-60 characters, with emoji, informative but attractive.
-2. KEYWORDS: 2-3 high-volume terms.
-3. TAGS: 15-20 tags (no dates).
-4. COVER WORDS: 2-3 impactful words (e.g., "BITCOIN", "CRASH", "EXPLAINED").
+1. KEYWORDS: 2-3 high-volume terms.
+2. TAGS: 15-20 tags (no dates).
+3. COVER WORDS: 2-3 impactful words (e.g., "BITCOIN", "CRASH", "EXPLAINED").
 
 🎯 IMAGE PROMPTS (CRITICAL - MUST BE SEGMENT-SPECIFIC):
 For EACH segment, you MUST generate a DETAILED image prompt that VISUALLY REPRESENTS the content of that specific segment's text.
@@ -582,11 +605,14 @@ RULES:
 8. Style: hyperrealistic, cinematic, neon, 8k.
 9. PROHIBITED: people, faces, text, numbers, letters, watermarks, black boxes.
 
-Example HOOK segment:
-"dramatic close-up of a glowing Bitcoin coin with question marks around it, neon cyan and gold lighting, high contrast, dark background"
-
-Example DATA segment:
-"cinematic shot of a trading screen with red and green candlestick charts, intense neon glow, modern trading room atmosphere"
+🎯 HASHTAGS RULES (CRITICAL - IN ENGLISH):
+- Generate 4-6 hashtags that are SPECIFIC to the Shorts topic.
+- Include the main keyword(s) of the video.
+- Each hashtag must start with "#" and have no spaces.
+- DO NOT use generic hashtags like #shorts or #video.
+- DO NOT use #Finance or #Shorts as dynamic (they are added automatically).
+- Separate hashtags with spaces.
+- Example for Bitcoin halving: "#BitcoinHalving #BTC #CryptoHalving #BitcoinNews"
 
 🎯 THUMBNAIL DESIGN:
 Create a prompt in ENGLISH for the thumbnail background. It should represent the OVERALL topic.
@@ -599,15 +625,15 @@ Create a prompt in ENGLISH for the thumbnail background. It should represent the
 
 📤 RESPONSE: Return STRICTLY this JSON:
 {{
-    "title": "Title with curiosity (50-60 chars, no past dates)",
+    "title": "Optimized title (50-60 chars, with emoji and curiosity gap, no past dates)",
     "alternative_title": "Second title for A/B testing",
     "keywords": ["keyword1", "keyword2", "keyword3"],
     "hook_description": "Hook for description (max 90 chars)",
     "context_description": "Context in one sentence",
     "source_story": "Story source (e.g., 'Federal Reserve data' or 'Personal experience')",
-    "full_text": "Text with the 4 blocks (90-110 words)",
     "cover_words": "2-3 words for thumbnail",
     "tags": "15-20 tags separated by commas (no dates)",
+    "dynamic_hashtags": "4-6 hashtags specific to the topic (e.g., '#BitcoinHalving #BTC #CryptoHalving')",
     "segments": [
         {{"block": "HOOK", "text": "text (~10-15 words)", "image_prompt": "Detailed prompt for THIS specific segment's content"}},
         {{"block": "DATA", "text": "text (~20-30 words)", "image_prompt": "Detailed prompt for THIS specific segment's content"}},
@@ -654,24 +680,25 @@ Create a prompt in ENGLISH for the thumbnail background. It should represent the
                 if not seg.get("image_prompt") or len(seg["image_prompt"].split()) < 5:
                     seg["image_prompt"] = f"cinematic financial scene about {tema_elegido[:40]}, neon lighting, hyperrealistic, 8k, no people, no text"
 
-            # Reconstruir full_text desde segments
+            # Reconstruir full_text desde segments (para validación y logs)
             texto = ""
             for seg in data["segments"]:
                 texto += f"[{seg['block']}] {seg['text']}\n"
-            data["full_text"] = texto.strip()
 
-            # Validar longitud
+            # Validar longitud del texto completo
             palabras = len(re.findall(r'\w+', texto))
             if palabras < 70 or palabras > 130:
                 if palabras > 130:
-                    data["full_text"] = truncar_texto(texto)
-                    # También actualizar los segmentos
-                    texto_truncado = data["full_text"]
-                    # Reasignar segmentos basados en texto truncado (simple)
-                    bloques = re.split(r'\[(HOOK|DATA|TAKEAWAY|CLOSE)\]', texto_truncado)
-                    # Esto es un fallback simple, se puede mejorar
+                    data["segments"] = truncar_segmentos(data["segments"])
+                    texto = ""
+                    for seg in data["segments"]:
+                        texto += f"[{seg['block']}] {seg['text']}\n"
                 elif palabras < 70:
-                    data["full_text"] = texto + " This is a quick financial insight. Follow for more."
+                    # Añadir algo al último segmento para cumplir
+                    data["segments"][-1]["text"] += " This is a quick financial insight. Follow for more."
+                    texto = ""
+                    for seg in data["segments"]:
+                        texto += f"[{seg['block']}] {seg['text']}\n"
 
             # Verificar duplicado
             titulo = data.get("title", "").strip()
@@ -695,6 +722,9 @@ Create a prompt in ENGLISH for the thumbnail background. It should represent the
             if "thumbnail_prompt" not in data or not data["thumbnail_prompt"]:
                 data["thumbnail_prompt"] = "clean professional financial chart, dark background, blue and gold colors, no people, no text, high contrast"
 
+            if "dynamic_hashtags" not in data:
+                data["dynamic_hashtags"] = ""
+
             print(f"   🏷️ Title: {data['title']} ({len(data['title'])} chars)")
             print(f"   📊 Words: {palabras}")
             return data, tema_elegido, restriccion
@@ -707,35 +737,21 @@ Create a prompt in ENGLISH for the thumbnail background. It should represent the
     print("❌ ALL ATTEMPTS FAILED.")
     sys.exit(1)
 
-# ================================================================
-# DIVIDIR EN SEGMENTOS (AHORA SOLO EXTRAER DE LA ESTRUCTURA JSON)
-# ================================================================
-def dividir_en_segmentos(segments_data):
-    """Extrae los segmentos del JSON (ya vienen estructurados)"""
-    segmentos = []
-    for seg in segments_data:
-        segmentos.append(seg["text"])
-    return segmentos
-
-# ================================================================
-# ASIGNAR ETAPAS VISUALES (para usar con los prompts de DeepSeek)
-# ================================================================
-def asignar_etapas_visuales(segmentos):
-    n = len(segmentos)
-    etapas = []
-    ubicaciones = []
-    mapa_etapas = ["hook", "data", "takeaway", "close"]
-    mapa_ubicaciones = [
-        "hook moment, curiosity gap",
-        "data visualization, charts",
-        "key takeaway, lesson",
-        "closing reflection, CTA"
-    ]
-    for i in range(n):
-        idx = min(i, len(mapa_etapas) - 1)
-        etapas.append(mapa_etapas[idx])
-        ubicaciones.append(mapa_ubicaciones[idx])
-    return etapas, ubicaciones
+def truncar_segmentos(segments):
+    """Trunca el texto de los segmentos para mantener el total dentro del límite."""
+    total_palabras = sum(len(seg["text"].split()) for seg in segments)
+    if total_palabras <= 110:
+        return segments
+    # Reducir proporcionalmente cada segmento
+    objetivo = 110
+    factor = objetivo / total_palabras
+    nuevos = []
+    for seg in segments:
+        palabras = seg["text"].split()
+        nuevo_largo = max(3, int(len(palabras) * factor))
+        nuevas_palabras = palabras[:nuevo_largo]
+        nuevos.append({"block": seg["block"], "text": " ".join(nuevas_palabras), "image_prompt": seg.get("image_prompt", "")})
+    return nuevos
 
 # ================================================================
 # GENERAR IMAGEN VERTICAL (CON TIMEOUT 180s)
@@ -852,9 +868,9 @@ def generar_audio(texto, index, intentos_por_voz=2):
     return None
 
 # ================================================================
-# GENERAR RECURSOS POR SEGMENTO (CON REUTILIZACIÓN DE IMÁGENES)
+# GENERAR RECURSOS POR SEGMENTO (USANDO PROMPTS DE DEEPSEEK)
 # ================================================================
-def generar_recursos_por_segmento(segmentos, etapas, ubicaciones, temas_data, paleta_video, titulo, intentos_imagen=3):
+def generar_recursos_por_segmento(segmentos, segments_data, paleta_video, titulo, intentos_imagen=3):
     recursos = []
     total = len(segmentos)
     last_successful_url = None
@@ -863,7 +879,7 @@ def generar_recursos_por_segmento(segmentos, etapas, ubicaciones, temas_data, pa
         print(f"  🎬 Segment {idx+1}/{total} ({len(seg_text.split())} words)")
         
         # Obtener el prompt de imagen generado por DeepSeek para este segmento
-        prompt_deepseek = temas_data[idx].get("image_prompt", "")
+        prompt_deepseek = segments_data[idx].get("image_prompt", "")
         
         # Enriquecerlo con título, paleta y composición
         prompt_img = construir_prompt_segmento(titulo, prompt_deepseek, idx, paleta_video)
@@ -988,6 +1004,31 @@ def agregar_subtitulos_con_pil(imagen_path, texto, salida_path):
         return imagen_path
 
 # ================================================================
+# 🔤 FUENTE GRUESA REAL (descarga Anton, fallback a DejaVu del sistema)
+# ================================================================
+def obtener_ruta_fuente():
+    if not os.path.exists("Anton.ttf"):
+        try:
+            print("📥 Downloading Anton font...")
+            url = "https://github.com/google/fonts/raw/main/ofl/anton/Anton-Regular.ttf"
+            r = requests.get(url, timeout=30)
+            if r.status_code == 200 and len(r.content) > 10000:
+                with open("Anton.ttf", "wb") as f:
+                    f.write(r.content)
+                print("✅ Anton font downloaded")
+        except Exception as e:
+            print(f"⚠️ Font download failed: {e}")
+    rutas = [
+        "Anton.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "fonts/Anton.ttf",
+    ]
+    for ruta in rutas:
+        if os.path.exists(ruta):
+            return ruta
+    return None
+
+# ================================================================
 # 🖼️ MINIATURA PROFESIONAL (SIN rectángulo con borde)
 # ================================================================
 def crear_miniatura_profesional(prompt_miniatura, texto_portada, salida="miniatura_short_en.jpg"):
@@ -1023,7 +1064,6 @@ def crear_miniatura_profesional(prompt_miniatura, texto_portada, salida="miniatu
         else:
             texto = ' '.join(lineas)
         
-        # Dividir en máximo 2 líneas
         palabras = texto.split()
         if len(palabras) > 1:
             mitad = len(palabras) // 2
@@ -1032,32 +1072,13 @@ def crear_miniatura_profesional(prompt_miniatura, texto_portada, salida="miniatu
         else:
             lineas = [texto]
         
-        # Fuente descargada Anton o fallback
-        if not os.path.exists("Anton.ttf"):
-            try:
-                print("📥 Downloading Anton font...")
-                url_font = "https://github.com/google/fonts/raw/main/ofl/anton/Anton-Regular.ttf"
-                r = requests.get(url_font, timeout=30)
-                if r.status_code == 200 and len(r.content) > 10000:
-                    with open("Anton.ttf", "wb") as f:
-                        f.write(r.content)
-                    print("✅ Anton font downloaded")
-            except Exception as e:
-                print(f"⚠️ Font download failed: {e}")
-        
-        if os.path.exists("Anton.ttf"):
-            font_path = "Anton.ttf"
-        else:
-            font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+        ruta_fuente = obtener_ruta_fuente()
         
         size = 130
         while size >= 60:
-            try:
-                if os.path.exists(font_path):
-                    font = ImageFont.truetype(font_path, size)
-                else:
-                    font = ImageFont.load_default()
-            except:
+            if ruta_fuente:
+                font = ImageFont.truetype(ruta_fuente, size)
+            else:
                 font = ImageFont.load_default()
             ancho_max = 0
             for linea in lineas:
@@ -1071,21 +1092,17 @@ def crear_miniatura_profesional(prompt_miniatura, texto_portada, salida="miniatu
         alto_total = alto_linea * len(lineas)
         y_inicio = (720 - alto_total) // 2
         
-        # SIN rectángulo negro: solo texto con contorno grueso y sombra
         for i, linea in enumerate(lineas):
             bbox = draw.textbbox((0, 0), linea, font=font)
             text_w = bbox[2] - bbox[0]
             text_h = bbox[3] - bbox[1]
-            x = 1280 - text_w - 60  # Alineado a la derecha
+            x = 1280 - text_w - 60
             y = y_inicio + i * alto_linea
             
-            # Sombra proyectada
             draw.text((x + 6, y + 8), linea, fill=(0, 0, 0), font=font)
-            # Contorno negro grueso
             for dx in range(-6, 7, 2):
                 for dy in range(-6, 7, 2):
                     draw.text((x + dx, y + dy), linea, fill='black', font=font)
-            # Relleno amarillo brillante
             draw.text((x, y), linea, fill=(255, 230, 60), font=font)
         
         img.save(salida)
@@ -1188,9 +1205,9 @@ def montar_video_shorts(recursos, fondo_path, salida="short_capital_en.mp4"):
     return salida
 
 # ================================================================
-# SUBIR A YOUTUBE (CON CATEGORÍA 22 Y VALIDACIÓN DE TAGS)
+# SUBIR A YOUTUBE (CON HASHTAGS DINÁMICOS)
 # ================================================================
-def subir_a_youtube(video_path, titulo, etiquetas_str, gancho, contexto, hashtags, fuente="", miniatura_path=None):
+def subir_a_youtube(video_path, titulo, etiquetas_str, gancho, contexto, hashtags, fuente="", miniatura_path=None, dynamic_hashtags=""):
     try:
         creds = Credentials.from_authorized_user_info(YOUTUBE_USER_TOKEN)
         youtube = build("youtube", "v3", credentials=creds)
@@ -1198,7 +1215,6 @@ def subir_a_youtube(video_path, titulo, etiquetas_str, gancho, contexto, hashtag
         print(f"❌ Error authenticating: {e}")
         sys.exit(1)
     
-    # Limpiar y validar tags
     tags = sanitizar_tags(etiquetas_str)
     if not tags:
         print("⚠️ No valid tags found. Using default tags.")
@@ -1214,6 +1230,14 @@ def subir_a_youtube(video_path, titulo, etiquetas_str, gancho, contexto, hashtag
     
     print(f"📝 Final tags ({len(tags)}): {tags_str_final}")
     
+    # Hashtags fijos + dinámicos
+    hashtags_fijos = "#Shorts #Finance #Investing"
+    if dynamic_hashtags:
+        dynamic_hashtags = sanitizar_hashtags(dynamic_hashtags, max_tags=6)
+        hashtags_final = f"{dynamic_hashtags} {hashtags_fijos}"
+    else:
+        hashtags_final = hashtags_fijos
+    
     descripcion = f"""{gancho}
 
 {contexto}
@@ -1222,7 +1246,7 @@ def subir_a_youtube(video_path, titulo, etiquetas_str, gancho, contexto, hashtag
 
 📖 {fuente}
 
-{hashtags}
+{hashtags_final}
 
 ⚠️ IMPORTANT NOTICE: This content is for educational purposes only and does not constitute financial, legal, or investment advice."""
     
@@ -1285,11 +1309,12 @@ def main():
     print("🎬 Capital Minds - SHORTS BOT (ENGLISH VERSION) - IMPROVED")
     print("   ✓ SEGMENT-SPECIFIC IMAGE PROMPTS from DeepSeek")
     print("   ✓ Each image matches the segment's narration content")
+    print("   ✓ DYNAMIC HASHTAGS: 4-6 hashtags specific to each Short topic")
+    print("   ✓ OPTIMIZED TITLES: more clickable without being sensationalist")
     print("   ✓ Title-adapted visual subjects (fallback)")
     print("   ✓ 6 different compositions (one per block)")
-    print("   ✓ Random color palette per video (variety)")
+    print("   ✓ Random color palette per video")
     print("   ✓ NO black boxes: overlay removed + real font download")
-    print("   ✓ Negative prompt blocks black boxes/labels/numbers")
     print("   ✓ 25+ formats, 60+ topics, duplicate control ES/EN")
     print("="*60)
 
@@ -1320,7 +1345,6 @@ def main():
     estado = cargar_estado()
     fondo_path = seleccionar_fondo_disponible(estado)
     
-    # 🎨 Paleta aleatoria por video
     paleta_video = random.choice(PALETAS_VIDEO)
     print(f"🎨 Color palette for this video: {paleta_video}")
     
@@ -1336,25 +1360,20 @@ def main():
     
     guion, tema_elegido, restriccion = generar_guion_financiero(tipo, idea, fecha_formateada)
     titulo = guion["title"]
-    texto = guion["full_text"]
+    dynamic_hashtags = guion.get("dynamic_hashtags", "")
+    segments_data = guion["segments"]
     palabras_portada = guion.get("cover_words", "INSIGHT")
     prompt_miniatura = guion.get("thumbnail_prompt", "")
-    segments_data = guion["segments"]  # Lista de diccionarios con block, text, image_prompt
     
     # Extraer textos de segmentos
     segmentos = [seg["text"] for seg in segments_data]
     
-    palabras_texto = len(re.findall(r'\w+', texto))
-    print(f"📝 Text: {palabras_texto} words")
-    print(f"📌 Topic: {tema_elegido}")
-    
-    # Asignar etapas visuales (aunque ahora usamos prompts de DeepSeek)
-    etapas, ubicaciones = asignar_etapas_visuales(segmentos)
-    print(f"🎬 {len(segmentos)} segments generated")
+    print(f"🏷️ Title: {titulo}")
+    print(f"🏷️ Dynamic hashtags: {dynamic_hashtags}")
     
     # Generar recursos con prompts de DeepSeek
     recursos = generar_recursos_por_segmento(
-        segmentos, etapas, ubicaciones, segments_data, paleta_video, titulo
+        segmentos, segments_data, paleta_video, titulo
     )
     if not recursos:
         print("❌ Error generating resources.")
@@ -1380,9 +1399,10 @@ def main():
         etiquetas_str=guion["tags"],
         gancho=guion["hook_description"],
         contexto=guion["context_description"],
-        hashtags="#Shorts #Finance #Education",
+        hashtags="",  # Se construye internamente
         fuente=guion.get("source_story", "Based on financial analysis"),
-        miniatura_path=miniatura_path
+        miniatura_path=miniatura_path,
+        dynamic_hashtags=dynamic_hashtags
     )
     
     guardar_titulo_publicado(guion["title"])
