@@ -98,26 +98,45 @@ def detectar_sujeto_visual(texto_ref):
             return sujeto
     return "a cinematic financial scene with glowing charts, coins and data visualizations"
 
-def construir_prompt_segmento(titulo, prompt_original, idx_bloque, paleta):
-    """Prompt ADAPTADO AL TÍTULO con composición distinta por bloque."""
-    sujeto = detectar_sujeto_visual(titulo + " " + (prompt_original or ""))
-    composicion = COMPOSICIONES_BLOQUE[idx_bloque % len(COMPOSICIONES_BLOQUE)]
+# ================================================================
+# CONSTRUIR PROMPT DE IMAGEN POR SEGMENTO (USA EL PROMPT DE DEEPSEEK)
+# ================================================================
+def construir_prompt_segmento(titulo, prompt_deepseek, idx_bloque, paleta):
+    """
+    Enriquece el prompt de imagen generado por DeepSeek (específico para el segmento)
+    con la paleta de colores, composición y restricciones.
+    Si DeepSeek no dio un prompt detallado, usa un fallback basado en el título.
+    """
+    # Si DeepSeek generó un prompt detallado para este segmento, usarlo como base
+    if prompt_deepseek and len(prompt_deepseek.split()) > 5:
+        base_prompt = prompt_deepseek
+    else:
+        # Fallback: usar sujeto visual detectado del título
+        sujeto = detectar_sujeto_visual(titulo)
+        composicion = COMPOSICIONES_BLOQUE[idx_bloque % len(COMPOSICIONES_BLOQUE)]
+        base_prompt = f"{sujeto}, {composicion}"
+    
+    # Añadir estilo, paleta y restricciones
     return (
-        f"{sujeto}, {composicion}, color palette of {paleta}, "
+        f"{base_prompt}, color palette of {paleta}, "
         "cinematic financial documentary style, hyperrealistic, 8k resolution, "
         "dramatic lighting, high contrast, sharp focus, "
         "no people, no faces, no hands, no text, no letters, no numbers, no logos, "
         "no watermark, no black box, no rectangle overlay"
     )
 
-def construir_prompt_miniatura(titulo, prompt_original, paleta):
-    """Fondo de miniatura ADAPTADO AL TÍTULO con espacio limpio a la derecha."""
-    sujeto = detectar_sujeto_visual(titulo + " " + (prompt_original or ""))
+def construir_prompt_miniatura(titulo, prompt_deepseek, paleta):
+    """Fondo de miniatura adaptado al título y al prompt de DeepSeek."""
+    if prompt_deepseek and len(prompt_deepseek.split()) > 5:
+        base_prompt = prompt_deepseek
+    else:
+        sujeto = detectar_sujeto_visual(titulo)
+        base_prompt = f"{sujeto}, dramatic composition with clean dark empty space on the RIGHT side"
+    
     return (
-        f"{sujeto}, dramatic composition with clean dark empty space on the RIGHT side, "
-        f"color palette of {paleta}, youtube finance thumbnail style, hyperrealistic, 8k, "
-        "high contrast, cinematic lighting, sharp focus, no people, no faces, no text, "
-        "no letters, no numbers, no watermark, no black box"
+        f"{base_prompt}, color palette of {paleta}, youtube finance thumbnail style, "
+        "hyperrealistic, 8k, high contrast, cinematic lighting, sharp focus, "
+        "no people, no faces, no text, no letters, no numbers, no watermark, no black box"
     )
 
 # ================================================================
@@ -465,7 +484,7 @@ RETURN ONLY THE EXPANDED SCRIPT TEXT, with the same blocks [HOOK], [INTRO], [PRO
         return None
 
 # ================================================================
-# GENERAR GUION LARGO (CON FORMATOS Y TEMAS VARIADOS)
+# GENERAR GUION LARGO (CON PROMPTS DE IMAGEN POR SEGMENTO)
 # ================================================================
 def generar_guion_largo(tipo, fecha_actual, idea=None):
     titulos_pub = cargar_titulos_publicados()["titulos"][-10:]
@@ -592,16 +611,28 @@ You are a PROFESSIONAL SCRIPTWRITER and FINANCE EXPERT. Write a DETAILED script 
 - Include rhetorical questions and analogies.
 - DO NOT use specific past dates.
 
-🎯 IMAGE PROMPTS (CRITICAL FOR VARIETY):
-Each block MUST have a DIFFERENT visual subject related to the TITLE topic.
-- NEVER repeat "golden bitcoin coin" in every block. Vary: charts, buildings, vaults, objects, metaphors, maps, technology.
-- Style: cinematic, neon, 8k.
-- PROHIBITED: people, faces, close-up faces, text, letters, numbers, black boxes.
+🎯 IMAGE PROMPTS (CRITICAL - MUST BE SEGMENT-SPECIFIC):
+For EACH segment, you MUST generate a DETAILED image prompt that VISUALLY REPRESENTS the content of that specific segment's text.
+
+RULES FOR IMAGE PROMPTS:
+1. Each segment MUST have a UNIQUE image prompt based on its own text content.
+2. If the segment talks about "panic selling", show panic selling visuals (red charts, fear).
+3. If the segment talks about "Bitcoin halving", show Bitcoin halving visuals.
+4. If the segment talks about "Fed rate hike", show a central bank or interest rate chart.
+5. If the segment talks about "gold", show gold bars or coins.
+6. DO NOT repeat the same prompt across segments.
+7. Each prompt must be descriptive (at least 10 words).
+8. Style: hyperrealistic, cinematic, neon, 8k.
+9. PROHIBITED: people, faces, text, numbers, letters, watermarks, black boxes.
+
+Examples:
+- HOOK segment (challenge): "dramatic wide shot of a glowing Bitcoin coin on a chessboard, neon cyan and gold lighting, high contrast, dark background"
+- PROBLEM segment (losses): "cinematic shot of red descending candlestick charts on multiple screens, intense red neon glow, dark trading room atmosphere"
+- SOLUTION segment (strategy): "isometric view of a glowing financial roadmap with checkpoints, neon green and blue lighting, clean composition"
 
 🎯 THUMBNAIL DESIGN (IMPORTANT):
-Create a prompt in ENGLISH for Agnes to generate the BACKGROUND of the thumbnail.
+Create a prompt in ENGLISH for the thumbnail background. It should represent the OVERALL topic.
 - Style: "crypto YouTube thumbnail", neon, high contrast, cinematic, hyperrealistic.
-- The visual MUST represent the TITLE topic (gold bars if gold, bank building if Fed, charts if trading...).
 - PROHIBITED: people, faces, text.
 - Size: 1280x720 (horizontal).
 
@@ -626,12 +657,12 @@ Create a prompt in ENGLISH for Agnes to generate the BACKGROUND of the thumbnail
     "hashtags": "#hashtag1 #hashtag2",
     "script": "Full script of 1300-1500 words with the 6 marked blocks",
     "segments": [
-        {{"block": "HOOK", "text": "text (~10 words)", "image_prompt": "prompt in English WITHOUT PEOPLE"}},
-        {{"block": "INTRO", "text": "text (~150-200 words)", "image_prompt": "prompt in English"}},
-        {{"block": "PROBLEM", "text": "text (~200-250 words)", "image_prompt": "prompt in English"}},
-        {{"block": "DEVELOPMENT", "text": "text (~300-350 words)", "image_prompt": "prompt in English"}},
-        {{"block": "SOLUTION", "text": "text (~250-300 words)", "image_prompt": "prompt in English"}},
-        {{"block": "CLOSE", "text": "text (~200-250 words)", "image_prompt": "prompt in English"}}
+        {{"block": "HOOK", "text": "text (~10 words)", "image_prompt": "Detailed prompt for THIS specific segment's content"}},
+        {{"block": "INTRO", "text": "text (~150-200 words)", "image_prompt": "Detailed prompt for THIS specific segment's content"}},
+        {{"block": "PROBLEM", "text": "text (~200-250 words)", "image_prompt": "Detailed prompt for THIS specific segment's content"}},
+        {{"block": "DEVELOPMENT", "text": "text (~300-350 words)", "image_prompt": "Detailed prompt for THIS specific segment's content"}},
+        {{"block": "SOLUTION", "text": "text (~250-300 words)", "image_prompt": "Detailed prompt for THIS specific segment's content"}},
+        {{"block": "CLOSE", "text": "text (~200-250 words)", "image_prompt": "Detailed prompt for THIS specific segment's content"}}
     ],
     "cover_words": "2-3 words for the thumbnail text (e.g., 'I MADE IT', 'THE CHALLENGE')",
     "thumbnail_prompt": "Prompt in English for the thumbnail background (NO text, NO people, 1280x720)"
@@ -680,6 +711,11 @@ Create a prompt in ENGLISH for Agnes to generate the BACKGROUND of the thumbnail
             
             if "thumbnail_prompt" not in result:
                 result["thumbnail_prompt"] = ""
+            
+            # Verificar que cada segmento tenga image_prompt
+            for seg in result.get("segments", []):
+                if not seg.get("image_prompt") or len(seg["image_prompt"].split()) < 5:
+                    seg["image_prompt"] = f"cinematic financial scene about {tema_elegido[:50]}, neon lighting, hyperrealistic, 8k, no people, no text"
             
             return result, tema_elegido, restriccion
         except Exception as e:
@@ -1217,12 +1253,14 @@ def limpiar_archivos_temporales():
     print("✅ Cleanup completed")
 
 # ================================================================
-# MAIN (IMÁGENES ADAPTADAS AL TÍTULO + SIN CAJAS NEGRAS)
+# MAIN (IMÁGENES ADAPTADAS AL TÍTULO + SEGMENTO + SIN CAJAS NEGRAS)
 # ================================================================
 def main():
     print("="*60)
     print("🎬 Capital Minds - LONG VIDEO BOT (ENGLISH VERSION)")
-    print("   ✓ TITLE-ADAPTED IMAGES: visual subject from title keywords")
+    print("   ✓ SEGMENT-SPECIFIC IMAGE PROMPTS from DeepSeek")
+    print("   ✓ Each image matches the segment's narration content")
+    print("   ✓ Title-adapted visual subjects (fallback)")
     print("   ✓ 6 different compositions (one per block)")
     print("   ✓ Random color palette per video (variety)")
     print("   ✓ NO black boxes: overlay removed + real font download")
@@ -1275,20 +1313,25 @@ def main():
     prompt_miniatura = guion.get("thumbnail_prompt", "")
     
     print(f"🏷️ Title: {titulo}")
-    print(f"🎯 Visual subject detected: {detectar_sujeto_visual(titulo)}")
     
     capitulos = []
     for seg in segmentos:
         capitulos.append({"bloque": seg.get("block", "CHAPTER")})
     
     # ============================================================
-    # PRIMERA PASADA: imágenes ADAPTADAS AL TÍTULO por segmento
+    # PRIMERA PASADA: imágenes SEGÚN EL TEXTO DEL SEGMENTO
     # ============================================================
-    print("\n🖼️ FIRST PASS: Generating title-adapted images for all segments...")
+    print("\n🖼️ FIRST PASS: Generating segment-specific images...")
     imagenes_generadas = []
     for idx, seg in enumerate(segmentos):
         print(f"🎬 Segment {idx+1}/{len(segmentos)} - {seg.get('block', '')}")
-        prompt_img = construir_prompt_segmento(titulo, seg.get("image_prompt", ""), idx, paleta_video)
+        
+        # Obtener el prompt de imagen generado por DeepSeek para ESTE segmento
+        prompt_deepseek = seg.get("image_prompt", "")
+        
+        # Enriquecerlo con título, paleta y composición
+        prompt_img = construir_prompt_segmento(titulo, prompt_deepseek, idx, paleta_video)
+        
         print(f"   📝 Prompt: {prompt_img[:120]}...")
         img_url = generar_imagen_horizontal(prompt_img, intentos=3)
         imagenes_generadas.append(img_url)
@@ -1354,6 +1397,9 @@ def main():
     video_path = montar_video_largo(recursos, fondo_path, "largo_capital_en.mp4", capitulos)
     print(f"🎬 Video assembled: {video_path}")
     
+    # ============================================================
+    # MINIATURA adaptada al título y al prompt de DeepSeek
+    # ============================================================
     miniatura_path = None
     print("🖼️ Generating professional thumbnail (title-adapted, no black box)...")
     prompt_miniatura_final = construir_prompt_miniatura(titulo, prompt_miniatura, paleta_video)
