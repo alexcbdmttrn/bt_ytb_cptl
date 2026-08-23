@@ -39,7 +39,6 @@ ESTADO_FILE = "estado_capital_shorts_en.json"
 TITULOS_FILE = "titulos_capital_shorts_en_publicados.json"
 TEMAS_PUBLICADOS_FILE = "temas_shorts_en_publicados.json"
 
-# Archivos de estado del bot en español (para evitar duplicados entre bots)
 ESTADO_FILE_ES = "estado_capital_shorts.json"
 TITULOS_FILE_ES = "titulos_capital_shorts_publicados.json"
 TEMAS_PUBLICADOS_FILE_ES = "temas_shorts_publicados.json"
@@ -54,7 +53,90 @@ VOZ_FIJA = {"voz": "en-US-JennyNeural", "velocidad": "+10%", "tono": "-1Hz"}
 CONFIG_VOZ_ACTUAL = VOZ_FIJA
 
 # ================================================================
-# MÚSICA CORPORATE (opcional)
+# 🎨 VARIEDAD VISUAL (paletas y composiciones)
+# ================================================================
+PALETAS_VIDEO = [
+    "electric cyan and gold neon on dark navy",
+    "emerald green and silver on black",
+    "violet magenta and orange on deep blue",
+    "crimson red and gold on charcoal",
+    "teal and amber on dark slate",
+    "ice blue and white on midnight black",
+]
+
+COMPOSICIONES_BLOQUE = [
+    "extreme wide establishing shot",
+    "medium shot with shallow depth of field, main object centered",
+    "isometric 3D style scene",
+    "top-down aerial view",
+    "dramatic low-angle shot with rim lighting",
+    "macro close-up of the main object with bokeh background",
+]
+
+SUJETOS_VISUALES = [
+    (["bitcoin", "btc", "crypto", "cryptocurrency", "halving"], "a giant physical golden bitcoin coin"),
+    (["gold", "silver", "metal"], "shiny gold bars stacked inside a bank vault"),
+    (["fed", "reserve", "rate", "interest"], "a monumental central bank building with columns"),
+    (["inflation", "cpi", "price"], "a shopping cart full of groceries over a rising chart"),
+    (["etf", "fund", "institutional"], "a modern glass stock exchange building with digital tickers"),
+    (["stock", "market", "trading", "trader"], "candlestick trading charts on multiple glowing screens"),
+    (["scam", "fraud", "hack", "ftx", "collapse", "crash", "ponzi"], "a dark maze of falling dominoes made of coins"),
+    (["regulation", "law", "sec", "mica", "legal"], "a wooden gavel over legal documents and a glowing blockchain"),
+    (["ethereum", "solana", "layer", "blockchain", "technology", "rollup"], "a glowing network of interconnected blockchain nodes"),
+    (["oil", "energy", "mining"], "oil barrels and mining rigs under dramatic light"),
+    (["dollar", "forex", "currency"], "floating dollar bills and currency symbols in the air"),
+    (["house", "real estate", "mortgage"], "a miniature house model over financial charts"),
+    (["psychology", "fear", "greed", "panic"], "a human head silhouette filled with rising and falling charts"),
+    (["war", "geopolitic", "country", "china", "russia"], "a world map with glowing trade routes and tension lines"),
+]
+
+def detectar_sujeto_visual(texto_ref):
+    t = (texto_ref or "").lower()
+    for keywords, sujeto in SUJETOS_VISUALES:
+        if any(k in t for k in keywords):
+            return sujeto
+    return "a cinematic financial scene with glowing charts, coins and data visualizations"
+
+# ================================================================
+# CONSTRUIR PROMPT DE IMAGEN POR SEGMENTO (USA EL PROMPT DE DEEPSEEK)
+# ================================================================
+def construir_prompt_segmento(titulo, prompt_deepseek, idx_bloque, paleta):
+    """
+    Enriquece el prompt de imagen generado por DeepSeek (específico para el segmento)
+    con la paleta de colores, composición y restricciones.
+    Si DeepSeek no dio un prompt detallado, usa un fallback basado en el título.
+    """
+    if prompt_deepseek and len(prompt_deepseek.split()) > 5:
+        base_prompt = prompt_deepseek
+    else:
+        sujeto = detectar_sujeto_visual(titulo)
+        composicion = COMPOSICIONES_BLOQUE[idx_bloque % len(COMPOSICIONES_BLOQUE)]
+        base_prompt = f"{sujeto}, {composicion}"
+    
+    return (
+        f"{base_prompt}, color palette of {paleta}, "
+        "cinematic financial documentary style, hyperrealistic, 8k resolution, "
+        "dramatic lighting, high contrast, sharp focus, "
+        "no people, no faces, no hands, no text, no letters, no numbers, no logos, "
+        "no watermark, no black box, no rectangle overlay"
+    )
+
+def construir_prompt_miniatura(titulo, prompt_deepseek, paleta):
+    """Fondo de miniatura adaptado al título y al prompt de DeepSeek."""
+    if prompt_deepseek and len(prompt_deepseek.split()) > 5:
+        base_prompt = prompt_deepseek
+    else:
+        sujeto = detectar_sujeto_visual(titulo)
+        base_prompt = f"{sujeto}, dramatic composition with clean dark empty space on the RIGHT side"
+    
+    return (
+        f"{base_prompt}, color palette of {paleta}, youtube finance thumbnail style, "
+        "hyperrealistic, 8k, high contrast, cinematic lighting, sharp focus, "
+        "no people, no faces, no text, no letters, no numbers, no watermark, no black box"
+    )
+
+# ================================================================
+# MÚSICA CORPORATE
 # ================================================================
 FONDOS_DISPONIBLES = [
     "The Ascent.mp3",
@@ -103,38 +185,28 @@ def guardar_estado(estado):
         }, f, indent=2, ensure_ascii=False)
 
 def cargar_titulos_publicados():
-    # Cargar títulos del bot en inglés
     try:
         with open(TITULOS_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            titulos_en = data.get("titulos", [])
+            titulos_en = json.load(f).get("titulos", [])
     except:
         titulos_en = []
-    
-    # Cargar títulos del bot en español (para evitar duplicados)
     try:
         with open(TITULOS_FILE_ES, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            titulos_es = data.get("titulos", [])
+            titulos_es = json.load(f).get("titulos", [])
     except:
         titulos_es = []
-    
-    # Combinar y eliminar duplicados
-    todos = list(set(titulos_en + titulos_es))
-    return {"titulos": todos}
+    return {"titulos": list(set(titulos_en + titulos_es))}
 
 def guardar_titulo_publicado(titulo):
-    data = cargar_titulos_publicados()
-    if titulo not in data["titulos"]:
-        try:
-            with open(TITULOS_FILE, "r", encoding="utf-8") as f:
-                data_en = json.load(f)
-        except:
-            data_en = {"titulos": []}
-        if titulo not in data_en["titulos"]:
-            data_en["titulos"].append(titulo)
-            with open(TITULOS_FILE, "w", encoding="utf-8") as f:
-                json.dump(data_en, f, indent=2, ensure_ascii=False)
+    try:
+        with open(TITULOS_FILE, "r", encoding="utf-8") as f:
+            data_en = json.load(f)
+    except:
+        data_en = {"titulos": []}
+    if titulo not in data_en["titulos"]:
+        data_en["titulos"].append(titulo)
+        with open(TITULOS_FILE, "w", encoding="utf-8") as f:
+            json.dump(data_en, f, indent=2, ensure_ascii=False)
 
 def titulo_ya_publicado(titulo):
     data = cargar_titulos_publicados()
@@ -175,18 +247,14 @@ def incrementar_publicaciones_hoy():
 def cargar_temas_publicados():
     try:
         with open(TEMAS_PUBLICADOS_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            temas_en = data.get("temas", [])
+            temas_en = json.load(f).get("temas", [])
     except:
         temas_en = []
-    
     try:
         with open(TEMAS_PUBLICADOS_FILE_ES, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            temas_es = data.get("temas", [])
+            temas_es = json.load(f).get("temas", [])
     except:
         temas_es = []
-    
     return temas_en + temas_es
 
 def guardar_tema_publicado(tema, tipo):
@@ -195,12 +263,11 @@ def guardar_tema_publicado(tema, tipo):
             data = json.load(f)
     except:
         data = {"temas": []}
-    tema_data = {
+    data["temas"].append({
         "tema": tema,
         "tipo": tipo,
         "fecha": datetime.now(ZoneInfo("America/Mexico_City")).strftime("%Y-%m-%d")
-    }
-    data["temas"].append(tema_data)
+    })
     if len(data["temas"]) > 200:
         data["temas"] = data["temas"][-200:]
     with open(TEMAS_PUBLICADOS_FILE, "w", encoding="utf-8") as f:
@@ -247,7 +314,7 @@ def obtener_noticia_trending():
         return None
 
 # ================================================================
-# SANITIZAR TAGS MEJORADO (Robusto para YouTube)
+# SANITIZAR TAGS MEJORADO
 # ================================================================
 def sanitizar_tags(tags_str, max_chars=500):
     if not tags_str:
@@ -255,22 +322,18 @@ def sanitizar_tags(tags_str, max_chars=500):
     raw_tags = [t.strip() for t in tags_str.split(",") if t.strip()]
     cleaned = []
     for tag in raw_tags:
-        clean = re.sub(r'[^a-zA-Z0-9áéíóúüñÁÉÍÓÚÜÑ\s\-]', '', tag)
-        clean = clean.strip()
+        clean = re.sub(r'[^a-zA-Z0-9áéíóúüñÁÉÍÓÚÜÑ\s\-]', '', tag).strip()
         if clean and len(clean) > 1:
             cleaned.append(clean)
     cleaned = list(dict.fromkeys(cleaned))
-    current = ""
+    result = ""
     for tag in cleaned:
-        if current:
-            test = current + "," + tag
-        else:
-            test = tag
+        test = result + "," + tag if result else tag
         if len(test) <= max_chars:
-            current = test
+            result = test
         else:
             break
-    return current.split(",") if current else []
+    return result.split(",") if result else []
 
 # ================================================================
 # GENERAR FONDO SÓLIDO (fallback)
@@ -384,31 +447,7 @@ RESPONSE IN JSON:
         return None
 
 # ================================================================
-# EXTRAER BLOQUES (FALLBACK)
-# ================================================================
-def extraer_bloques(texto):
-    patron = r'\[HOOK\](.*?)(?=\[DATA\]|$)|\[DATA\](.*?)(?=\[TAKEAWAY\]|$)|\[TAKEAWAY\](.*?)(?=\[CLOSE\]|$)|\[CLOSE\](.*?)$'
-    matches = re.findall(patron, texto, re.DOTALL)
-    bloques = []
-    for grupo in matches:
-        for parte in grupo:
-            if parte and parte.strip():
-                bloques.append(parte.strip())
-    if len(bloques) == 4:
-        return bloques
-    oraciones = re.split(r'(?<=[.!?])\s+', texto)
-    if len(oraciones) >= 4:
-        chunk = len(oraciones) // 4
-        bloques = []
-        for i in range(4):
-            start = i * chunk
-            end = start + chunk if i < 3 else len(oraciones)
-            bloques.append(' '.join(oraciones[start:end]))
-        return bloques
-    return [texto]
-
-# ================================================================
-# GENERAR GUION SHORT (CON FORMATOS VARIADOS Y TEMAS REALES)
+# GENERAR GUION SHORT (CON PROMPTS DE IMAGEN POR SEGMENTO)
 # ================================================================
 def generar_guion_financiero(tipo, idea=None, fecha_actual=None):
     if not fecha_actual:
@@ -417,9 +456,7 @@ def generar_guion_financiero(tipo, idea=None, fecha_actual=None):
     titulos_pub = cargar_titulos_publicados()["titulos"][-10:]
     titulos_referencia = "\n".join([f"- {t}" for t in titulos_pub]) if titulos_pub else "None yet."
 
-    # AMPLIA LISTA DE TEMAS REALES (60+ temas variados)
     TEMAS_REALES = [
-        # Noticias macro
         "Federal Reserve interest rate decision and its impact on crypto",
         "Inflation report: CPI data exceeds expectations",
         "Bitcoin ETF inflows reach record high",
@@ -430,7 +467,6 @@ def generar_guion_financiero(tipo, idea=None, fecha_actual=None):
         "Global recession fears: are we heading for a downturn?",
         "US jobs report beats estimates: what it means for markets",
         "Japan's interest rate policy and crypto markets",
-        # Educación
         "What is a bear market and how to survive it",
         "How to read a candlestick chart",
         "The difference between market cap and price",
@@ -441,7 +477,6 @@ def generar_guion_financiero(tipo, idea=None, fecha_actual=None):
         "What is a smart contract?",
         "What is an ETF and how does it work?",
         "What is dollar-cost averaging?",
-        # Psicología
         "Why do most traders lose money? Psychology explained",
         "How to overcome FOMO in crypto",
         "The importance of risk management",
@@ -449,7 +484,6 @@ def generar_guion_financiero(tipo, idea=None, fecha_actual=None):
         "How to stay calm during market crashes",
         "What is the 'fear and greed index' and why it matters?",
         "The psychology of market cycles",
-        # Análisis de mercado
         "Bitcoin dominance: what it means for altcoins",
         "Ethereum's transition to proof-of-stake: explained",
         "Solana vs. Ethereum: which is better?",
@@ -458,14 +492,12 @@ def generar_guion_financiero(tipo, idea=None, fecha_actual=None):
         "RWA tokenization: the next big trend",
         "Altcoin season: what it is and when it happens",
         "Bitcoin halving: what it is and why it matters",
-        # Eventos históricos
         "What we learned from the FTX collapse",
         "The 2008 financial crisis and Bitcoin's origin",
         "Mt. Gox hack: lessons for investors",
         "The 2020 COVID crash and recovery",
         "How the 2022 bear market shaped crypto",
         "The 2017 bull run and its aftermath",
-        # Consejos prácticos
         "How to use dollar-cost averaging",
         "Why you should never share your private keys",
         "How to spot a crypto scam",
@@ -473,26 +505,21 @@ def generar_guion_financiero(tipo, idea=None, fecha_actual=None):
         "How to secure your crypto with a hardware wallet",
         "How to research a cryptocurrency before buying",
         "How to create a diversified crypto portfolio",
-        # Mitos
         "Is Bitcoin a bubble? Debunking the myth",
         "Is gold always a safe haven?",
         "Can you get rich overnight with crypto? The truth",
         "Are all altcoins scams? The reality",
         "Is crypto dead after a crash?",
-        # Datos sorprendentes
         "70% of retail traders lose money: the data",
         "Bitcoin's energy consumption: facts vs. fiction",
         "How much crypto is held by institutions?",
         "The average crypto investor's portfolio composition",
-        # Tecnología
         "What is a rollup? Layer 2 explained",
         "Zero-knowledge proofs: what they are and why they matter",
         "The future of blockchain interoperability",
-        # Regulación
         "Crypto regulation in the US: what's changing",
         "Europe's MiCA regulation explained",
         "How regulation affects crypto prices",
-        # DeFi y Web3
         "What is Uniswap? DeFi explained",
         "Yield farming: what it is and how it works",
         "What are DAOs? Decentralized organizations explained",
@@ -541,11 +568,30 @@ You are a FINANCE EXPERT and EDUCATIONAL CONTENT CREATOR for YouTube SHORTS.
 3. TAGS: 15-20 tags (no dates).
 4. COVER WORDS: 2-3 impactful words (e.g., "BITCOIN", "CRASH", "EXPLAINED").
 
+🎯 IMAGE PROMPTS (CRITICAL - MUST BE SEGMENT-SPECIFIC):
+For EACH segment, you MUST generate a DETAILED image prompt that VISUALLY REPRESENTS the content of that specific segment's text.
+
+RULES:
+1. Each segment MUST have a UNIQUE image prompt based on its own text content.
+2. If the segment talks about "panic selling", show panic selling visuals (red charts, fear).
+3. If the segment talks about "Bitcoin halving", show Bitcoin halving visuals.
+4. If the segment talks about "Fed rate hike", show a central bank or interest rate chart.
+5. If the segment talks about "gold", show gold bars or coins.
+6. DO NOT repeat the same prompt across segments.
+7. Each prompt must be descriptive (at least 8 words).
+8. Style: hyperrealistic, cinematic, neon, 8k.
+9. PROHIBITED: people, faces, text, numbers, letters, watermarks, black boxes.
+
+Example HOOK segment:
+"dramatic close-up of a glowing Bitcoin coin with question marks around it, neon cyan and gold lighting, high contrast, dark background"
+
+Example DATA segment:
+"cinematic shot of a trading screen with red and green candlestick charts, intense neon glow, modern trading room atmosphere"
+
 🎯 THUMBNAIL DESIGN:
-Create a prompt in ENGLISH for Agnes to generate the BACKGROUND.
-- Style: clean, professional, high contrast, cinematic.
+Create a prompt in ENGLISH for the thumbnail background. It should represent the OVERALL topic.
+- Style: "crypto YouTube thumbnail", neon, high contrast, cinematic, hyperrealistic.
 - PROHIBITED: people, faces, text.
-- Allowed: charts, data visualizations, Bitcoin, gold, graphs, maps.
 - Size: 1280x720 (horizontal).
 
 🚫 TITLES ALREADY PUBLISHED (DO NOT REPEAT):
@@ -562,6 +608,12 @@ Create a prompt in ENGLISH for Agnes to generate the BACKGROUND.
     "full_text": "Text with the 4 blocks (90-110 words)",
     "cover_words": "2-3 words for thumbnail",
     "tags": "15-20 tags separated by commas (no dates)",
+    "segments": [
+        {{"block": "HOOK", "text": "text (~10-15 words)", "image_prompt": "Detailed prompt for THIS specific segment's content"}},
+        {{"block": "DATA", "text": "text (~20-30 words)", "image_prompt": "Detailed prompt for THIS specific segment's content"}},
+        {{"block": "TAKEAWAY", "text": "text (~20-30 words)", "image_prompt": "Detailed prompt for THIS specific segment's content"}},
+        {{"block": "CLOSE", "text": "text (~15-20 words)", "image_prompt": "Detailed prompt for THIS specific segment's content"}}
+    ],
     "thumbnail_prompt": "Prompt in English for the thumbnail background (NO text, NO people, 1280x720)"
 }}
 """
@@ -594,24 +646,30 @@ Create a prompt in ENGLISH for Agnes to generate the BACKGROUND.
             else:
                 raise ValueError("No JSON found")
 
-            texto = data.get("full_text", "")
-            if not all(marker in texto for marker in ["[HOOK]", "[DATA]", "[TAKEAWAY]", "[CLOSE]"]):
-                print("   ⚠️ Blocks not found. Extracting manually...")
-                bloques = extraer_bloques(texto)
-                if len(bloques) == 4:
-                    texto_reconstruido = f"[HOOK] {bloques[0]}\n[DATA] {bloques[1]}\n[TAKEAWAY] {bloques[2]}\n[CLOSE] {bloques[3]}"
-                    data["full_text"] = texto_reconstruido
-                    texto = texto_reconstruido
-                    print("   ✅ Blocks reconstructed manually.")
-                else:
-                    raise ValueError("Could not extract blocks")
+            # Verificar que hay segmentos con image_prompt
+            if "segments" not in data or len(data["segments"]) != 4:
+                raise ValueError("Missing segments")
+            
+            for seg in data["segments"]:
+                if not seg.get("image_prompt") or len(seg["image_prompt"].split()) < 5:
+                    seg["image_prompt"] = f"cinematic financial scene about {tema_elegido[:40]}, neon lighting, hyperrealistic, 8k, no people, no text"
+
+            # Reconstruir full_text desde segments
+            texto = ""
+            for seg in data["segments"]:
+                texto += f"[{seg['block']}] {seg['text']}\n"
+            data["full_text"] = texto.strip()
 
             # Validar longitud
             palabras = len(re.findall(r'\w+', texto))
             if palabras < 70 or palabras > 130:
                 if palabras > 130:
                     data["full_text"] = truncar_texto(texto)
-                    palabras = len(re.findall(r'\w+', data["full_text"]))
+                    # También actualizar los segmentos
+                    texto_truncado = data["full_text"]
+                    # Reasignar segmentos basados en texto truncado (simple)
+                    bloques = re.split(r'\[(HOOK|DATA|TAKEAWAY|CLOSE)\]', texto_truncado)
+                    # Esto es un fallback simple, se puede mejorar
                 elif palabras < 70:
                     data["full_text"] = texto + " This is a quick financial insight. Follow for more."
 
@@ -650,148 +708,34 @@ Create a prompt in ENGLISH for Agnes to generate the BACKGROUND.
     sys.exit(1)
 
 # ================================================================
-# DIVIDIR EN SEGMENTOS
+# DIVIDIR EN SEGMENTOS (AHORA SOLO EXTRAER DE LA ESTRUCTURA JSON)
 # ================================================================
-def dividir_en_segmentos(texto, max_palabras_por_segmento=35):
-    patron = r'\[HOOK\](.*?)(?=\[DATA\]|$)|\[DATA\](.*?)(?=\[TAKEAWAY\]|$)|\[TAKEAWAY\](.*?)(?=\[CLOSE\]|$)|\[CLOSE\](.*?)$'
-    matches = re.findall(patron, texto, re.DOTALL)
-    
+def dividir_en_segmentos(segments_data):
+    """Extrae los segmentos del JSON (ya vienen estructurados)"""
     segmentos = []
-    for grupo in matches:
-        for parte in grupo:
-            if parte and parte.strip():
-                parte_limpia = parte.strip()
-                palabras = parte_limpia.split()
-                if len(palabras) > max_palabras_por_segmento:
-                    for i in range(0, len(palabras), max_palabras_por_segmento):
-                        sub_segmento = ' '.join(palabras[i:i+max_palabras_por_segmento])
-                        segmentos.append(sub_segmento)
-                else:
-                    segmentos.append(parte_limpia)
-    
-    if not segmentos:
-        oraciones = re.split(r'(?<=[.!?])\s+', texto)
-        segmentos = [o.strip() for o in oraciones if o.strip()]
-    
-    if not segmentos:
-        segmentos = [texto]
-    
-    if len(segmentos) > 4:
-        while len(segmentos) > 4:
-            segmentos[-2] = segmentos[-2] + " " + segmentos[-1]
-            segmentos.pop()
-    
+    for seg in segments_data:
+        segmentos.append(seg["text"])
     return segmentos
 
 # ================================================================
-# ASIGNAR ETAPAS VISUALES
+# ASIGNAR ETAPAS VISUALES (para usar con los prompts de DeepSeek)
 # ================================================================
 def asignar_etapas_visuales(segmentos):
     n = len(segmentos)
     etapas = []
     ubicaciones = []
-    
-    mapa_etapas = [
-        "context_challenge",
-        "data_explanation",
-        "takeaway",
-        "close"
-    ]
+    mapa_etapas = ["hook", "data", "takeaway", "close"]
     mapa_ubicaciones = [
-        "person preparing for the financial challenge",
-        "graph showing data or statistics",
-        "person analyzing the data",
-        "person reflecting on the lesson learned"
+        "hook moment, curiosity gap",
+        "data visualization, charts",
+        "key takeaway, lesson",
+        "closing reflection, CTA"
     ]
-    
     for i in range(n):
         idx = min(i, len(mapa_etapas) - 1)
         etapas.append(mapa_etapas[idx])
         ubicaciones.append(mapa_ubicaciones[idx])
-    
     return etapas, ubicaciones
-
-# ================================================================
-# GENERAR PROMPT DE IMAGEN (ultraespecífico por bloque)
-# ================================================================
-def generar_prompt_imagen_segmento(segmento_texto, etapa, ubicacion_escena,
-                                   segmento_anterior_texto=None,
-                                   index_segmento=0, total_segmentos=1,
-                                   tema=None, es_primer_frame=False):
-    COLOR_NEON_ACTUAL = "electric cyan neon glow"
-    PALETA_BASE_ACTUAL = "Corporate blue and silver, modern office"
-    
-    contexto_previo = ""
-    if segmento_anterior_texto:
-        contexto_previo = f"\nPREVIOUS SCENE: '{segmento_anterior_texto[:120]}'"
-
-    prompts_etapa = {
-        "context_challenge": f"NEON NOIR aesthetic, cyberpunk financial vibe, intense {COLOR_NEON_ACTUAL} glow on a Bitcoin coin or financial chart, person looking determined, high contrast, dramatic lighting, futuristic corporate look",
-        "data_explanation": f"Hyperrealistic photograph of a trading screen with data and numbers, soft {COLOR_NEON_ACTUAL} neon accent, professional setting, natural lighting, clean composition, data visualization",
-        "takeaway": f"Medium shot of a person pointing at a financial chart or screen, intense {COLOR_NEON_ACTUAL} neon glow, high contrast, cinematic tension, dark atmosphere",
-        "close": f"Wide shot of a person reflecting or looking forward, warm {COLOR_NEON_ACTUAL} neon accents, optimistic atmosphere, professional photography, sharp focus"
-    }
-    estilo_base = prompts_etapa.get(etapa, prompts_etapa["context_challenge"])
-
-    descripcion_estilo = f"{estilo_base}, vertical 9:16, {PALETA_BASE_ACTUAL}, sharp focus, hyperdetailed, 8k resolution, cinematic"
-
-    tema_lower = tema.lower() if tema else ""
-    if "bitcoin" in tema_lower or "crypto" in tema_lower:
-        elementos_tema = "digital currency, blockchain data, crypto screens, modern fintech environment"
-    elif "gold" in tema_lower:
-        elementos_tema = "gold bars, precious metals, vault, luxury banking setting"
-    elif "scam" in tema_lower or "fraud" in tema_lower:
-        elementos_tema = "dramatic financial collapse scene, crisis atmosphere, concerned professionals"
-    elif "inflation" in tema_lower or "fed" in tema_lower:
-        elementos_tema = "macroeconomic data, inflation charts, central bank environment"
-    elif "etf" in tema_lower:
-        elementos_tema = "stock market data, ETF flows, financial institutions"
-    else:
-        elementos_tema = "modern financial setting, professional environment"
-
-    prompt = f"""
-You are a WORLD-CLASS CINEMATOGRAPHER specializing in FINANCIAL PHOTOGRAPHY.
-
-STORY FRAGMENT:
-\"\"\"
-{segmento_texto}
-\"\"\"
-{contexto_previo}
-
-CREATE A PREMIUM PHOTO PROMPT for a vertical (9:16) image.
-
-SCENE DETAILS:
-- STAGE: {etapa}
-- LOCATION: {ubicacion_escena}
-- VISUAL STYLE: {descripcion_estilo}
-- SUBJECT: {elementos_tema}
-
-COMPOSITION RULES:
-1. SHOT TYPE: Wide or medium shot. ABSOLUTELY NO close-up of faces unless the story requires it.
-2. MAIN SUBJECT: The environment, objects, and setting.
-3. If people appear: They occupy AT MOST 15% of the frame.
-4. FOCUS: Sharp, hyperrealistic, premium quality.
-5. Colors: Use neon accents ({COLOR_NEON_ACTUAL}) and high contrast.
-
-Return ONLY the English prompt, no explanations.
-"""
-    url = "https://api.deepseek.com/v1/chat/completions"
-    headers = {"Authorization": f"Bearer {DEEPSEEK_API_KEY}", "Content-Type": "application/json"}
-    payload = {
-        "model": "deepseek-chat",
-        "messages": [{"role": "user", "content": prompt}],
-        "temperature": 0.6,
-        "max_tokens": 400,
-    }
-    try:
-        r = requests.post(url, headers=headers, json=payload, timeout=60)
-        r.raise_for_status()
-        prompt_img = r.json()["choices"][0]["message"]["content"].strip()
-        prompt_img += f", hyperrealistic, 8k resolution, sharp focus, professional corporate photography, vertical 9:16, wide establishing shot, environment as main subject, no close-up face, no text, no watermark"
-        return prompt_img
-    except Exception as e:
-        print(f"⚠️ Error generating prompt: {e}")
-        return f"Wide establishing shot of {ubicacion_escena}, vertical 9:16, financial environment, hyperrealistic, 8k quality, {PALETA_BASE_ACTUAL}, {COLOR_NEON_ACTUAL} accent"
 
 # ================================================================
 # GENERAR IMAGEN VERTICAL (CON TIMEOUT 180s)
@@ -826,13 +770,11 @@ def generar_imagen_vertical(prompt, intentos=3):
         "width": 1080,
         "height": 1920,
         "num_images": 1,
-        "enhance_prompt": True
     }
     
     for intento in range(intentos):
         try:
             print(f"   🖼️ Generating image {intento+1}/{intentos}...")
-            # TIMEOUT AUMENTADO A 180 SEGUNDOS
             r = requests.post(url, headers=headers, json=payload, timeout=180)
             if r.status_code == 200:
                 data = r.json()
@@ -863,7 +805,6 @@ def generar_imagen_horizontal(prompt, intentos=3):
         "width": 1280,
         "height": 720,
         "num_images": 1,
-        "enhance_prompt": True
     }
     for intento in range(intentos):
         try:
@@ -913,21 +854,20 @@ def generar_audio(texto, index, intentos_por_voz=2):
 # ================================================================
 # GENERAR RECURSOS POR SEGMENTO (CON REUTILIZACIÓN DE IMÁGENES)
 # ================================================================
-def generar_recursos_por_segmento(segmentos, etapas, ubicaciones, tema=None, intentos_imagen=3):
+def generar_recursos_por_segmento(segmentos, etapas, ubicaciones, temas_data, paleta_video, titulo, intentos_imagen=3):
     recursos = []
     total = len(segmentos)
     last_successful_url = None
 
-    for idx, seg in enumerate(segmentos):
-        print(f"  🎬 Segment {idx+1}/{total} ({len(seg.split())} words)")
-        etapa = etapas[idx] if idx < len(etapas) else "context_challenge"
-        ubic = ubicaciones[idx] if idx < len(ubicaciones) else "financial office"
-        seg_anterior = segmentos[idx-1] if idx > 0 else None
-        es_primer_frame = (idx == 0)
+    for idx, seg_text in enumerate(segmentos):
+        print(f"  🎬 Segment {idx+1}/{total} ({len(seg_text.split())} words)")
         
-        prompt_img = generar_prompt_imagen_segmento(
-            seg, etapa, ubic, seg_anterior, idx, total, tema, es_primer_frame
-        )
+        # Obtener el prompt de imagen generado por DeepSeek para este segmento
+        prompt_deepseek = temas_data[idx].get("image_prompt", "")
+        
+        # Enriquecerlo con título, paleta y composición
+        prompt_img = construir_prompt_segmento(titulo, prompt_deepseek, idx, paleta_video)
+        
         print(f"    📝 Prompt: {prompt_img[:100]}...")
         
         img_url = None
@@ -961,7 +901,7 @@ def generar_recursos_por_segmento(segmentos, etapas, ubicaciones, tema=None, int
             img_url = img_path
             last_successful_url = img_url
         
-        audio_path = generar_audio(seg, idx)
+        audio_path = generar_audio(seg_text, idx)
         if not audio_path:
             print(f"    ❌ Audio failed for segment {idx+1}. Aborting.")
             return None
@@ -975,7 +915,7 @@ def generar_recursos_por_segmento(segmentos, etapas, ubicaciones, tema=None, int
             "imagen_url": img_url,
             "audio_path": audio_path,
             "duracion": dur,
-            "texto": seg
+            "texto": seg_text
         })
         
         if idx < total - 1:
@@ -1048,7 +988,7 @@ def agregar_subtitulos_con_pil(imagen_path, texto, salida_path):
         return imagen_path
 
 # ================================================================
-# MINIATURA PROFESIONAL MEJORADA (sin rectángulo con borde)
+# 🖼️ MINIATURA PROFESIONAL (SIN rectángulo con borde)
 # ================================================================
 def crear_miniatura_profesional(prompt_miniatura, texto_portada, salida="miniatura_short_en.jpg"):
     try:
@@ -1083,41 +1023,70 @@ def crear_miniatura_profesional(prompt_miniatura, texto_portada, salida="miniatu
         else:
             texto = ' '.join(lineas)
         
-        try:
-            font = ImageFont.truetype("fonts/Anton.ttf", 130)
-        except:
+        # Dividir en máximo 2 líneas
+        palabras = texto.split()
+        if len(palabras) > 1:
+            mitad = len(palabras) // 2
+            lineas = [' '.join(palabras[:mitad+1]), ' '.join(palabras[mitad+1:])]
+            lineas = [l for l in lineas if l]
+        else:
+            lineas = [texto]
+        
+        # Fuente descargada Anton o fallback
+        if not os.path.exists("Anton.ttf"):
             try:
-                font = ImageFont.truetype("/usr/share/fonts/truetype/msttcorefonts/Impact.ttf", 130)
-            except:
-                try:
-                    font = ImageFont.truetype("Impact.ttf", 130)
-                except:
+                print("📥 Downloading Anton font...")
+                url_font = "https://github.com/google/fonts/raw/main/ofl/anton/Anton-Regular.ttf"
+                r = requests.get(url_font, timeout=30)
+                if r.status_code == 200 and len(r.content) > 10000:
+                    with open("Anton.ttf", "wb") as f:
+                        f.write(r.content)
+                    print("✅ Anton font downloaded")
+            except Exception as e:
+                print(f"⚠️ Font download failed: {e}")
+        
+        if os.path.exists("Anton.ttf"):
+            font_path = "Anton.ttf"
+        else:
+            font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+        
+        size = 130
+        while size >= 60:
+            try:
+                if os.path.exists(font_path):
+                    font = ImageFont.truetype(font_path, size)
+                else:
                     font = ImageFont.load_default()
+            except:
+                font = ImageFont.load_default()
+            ancho_max = 0
+            for linea in lineas:
+                bbox = draw.textbbox((0, 0), linea, font=font)
+                ancho_max = max(ancho_max, bbox[2] - bbox[0])
+            if ancho_max <= 1150:
+                break
+            size -= 10
         
-        bbox = draw.textbbox((0, 0), texto, font=font)
-        text_w = bbox[2] - bbox[0]
-        text_h = bbox[3] - bbox[1]
-        x = (1280 - text_w) // 2
-        y = (720 - text_h) // 2 + 40
+        alto_linea = size + 15
+        alto_total = alto_linea * len(lineas)
+        y_inicio = (720 - alto_total) // 2
         
-        # Fondo oscuro detrás del texto (SIN BORDE)
-        padding = 40
-        bg_x = x - padding
-        bg_y = y - padding - 10
-        bg_w = text_w + padding * 2
-        bg_h = text_h + padding * 2 + 20
-        overlay = Image.new('RGBA', img.size, (0, 0, 0, 0))
-        overlay_draw = ImageDraw.Draw(overlay)
-        overlay_draw.rectangle([bg_x, bg_y, bg_x + bg_w, bg_y + bg_h], fill=(0, 0, 0, 200))
-        # ELIMINADO EL RECTÁNGULO CON BORDE
-        img = Image.alpha_composite(img.convert('RGBA'), overlay).convert('RGB')
-        draw = ImageDraw.Draw(img)
-        
-        for dx, dy in [(-5, -5), (-5, 5), (5, -5), (5, 5), (0, 8), (0, -8), (8, 0), (-8, 0)]:
-            draw.text((x + dx, y + dy), texto, fill='black', font=font)
-        for dx, dy in [(-2, -2), (-2, 2), (2, -2), (2, 2)]:
-            draw.text((x + dx, y + dy), texto, fill='white', font=font)
-        draw.text((x, y), texto, fill=(255, 255, 80), font=font)
+        # SIN rectángulo negro: solo texto con contorno grueso y sombra
+        for i, linea in enumerate(lineas):
+            bbox = draw.textbbox((0, 0), linea, font=font)
+            text_w = bbox[2] - bbox[0]
+            text_h = bbox[3] - bbox[1]
+            x = 1280 - text_w - 60  # Alineado a la derecha
+            y = y_inicio + i * alto_linea
+            
+            # Sombra proyectada
+            draw.text((x + 6, y + 8), linea, fill=(0, 0, 0), font=font)
+            # Contorno negro grueso
+            for dx in range(-6, 7, 2):
+                for dy in range(-6, 7, 2):
+                    draw.text((x + dx, y + dy), linea, fill='black', font=font)
+            # Relleno amarillo brillante
+            draw.text((x, y), linea, fill=(255, 230, 60), font=font)
         
         img.save(salida)
         print(f"✅ Professional thumbnail created: {salida}")
@@ -1313,19 +1282,15 @@ def limpiar_archivos_temporales():
 # ================================================================
 def main():
     print("="*60)
-    print("🎬 Capital Minds - SHORTS BOT (ENGLISH VERSION)")
-    print("   ✓ 25+ different formats to ensure variety")
-    print("   ✓ 60+ real financial topics")
-    print("   ✓ Curiosity-driven titles (no past dates)")
-    print("   ✓ Challenge → Process → Result structure")
-    print("   ✓ Enhanced thumbnail with neon text")
-    print("   ✓ 10s pauses between generations")
-    print("   ✓ Today's news (NewsAPI)")
-    print("   ✓ Category: People & Blogs (22)")
-    print("   ✓ IMAGE REUSE: falls back to previous segment")
-    print("   ✓ DUPLICATE CONTROL: checks Spanish bot's history too")
-    print("   ✓ TAGS VALIDATION: ensures YouTube-compatible tags")
-    print("   ✓ Formats: News, Education, Psychology, Analysis, History, Comparisons, Tips, Myths, Expert Opinions, Data, Interviews, Country Analysis, Blockchain Tech, Trading, Regulation, Sustainability, Success/Failure Stories, Predictions, Technical Analysis, Exchange Comparisons, Security, DeFi, NFTs, Geopolitics")
+    print("🎬 Capital Minds - SHORTS BOT (ENGLISH VERSION) - IMPROVED")
+    print("   ✓ SEGMENT-SPECIFIC IMAGE PROMPTS from DeepSeek")
+    print("   ✓ Each image matches the segment's narration content")
+    print("   ✓ Title-adapted visual subjects (fallback)")
+    print("   ✓ 6 different compositions (one per block)")
+    print("   ✓ Random color palette per video (variety)")
+    print("   ✓ NO black boxes: overlay removed + real font download")
+    print("   ✓ Negative prompt blocks black boxes/labels/numbers")
+    print("   ✓ 25+ formats, 60+ topics, duplicate control ES/EN")
     print("="*60)
 
     tz_mexico = ZoneInfo("America/Mexico_City")
@@ -1355,6 +1320,10 @@ def main():
     estado = cargar_estado()
     fondo_path = seleccionar_fondo_disponible(estado)
     
+    # 🎨 Paleta aleatoria por video
+    paleta_video = random.choice(PALETAS_VIDEO)
+    print(f"🎨 Color palette for this video: {paleta_video}")
+    
     print("💡 Generating video idea...")
     idea_data = generar_idea_video(tipo, fecha_formateada)
     if idea_data and "best_idea" in idea_data:
@@ -1366,19 +1335,27 @@ def main():
         idea = None
     
     guion, tema_elegido, restriccion = generar_guion_financiero(tipo, idea, fecha_formateada)
+    titulo = guion["title"]
     texto = guion["full_text"]
     palabras_portada = guion.get("cover_words", "INSIGHT")
     prompt_miniatura = guion.get("thumbnail_prompt", "")
+    segments_data = guion["segments"]  # Lista de diccionarios con block, text, image_prompt
+    
+    # Extraer textos de segmentos
+    segmentos = [seg["text"] for seg in segments_data]
     
     palabras_texto = len(re.findall(r'\w+', texto))
     print(f"📝 Text: {palabras_texto} words")
     print(f"📌 Topic: {tema_elegido}")
     
-    segmentos = dividir_en_segmentos(texto, max_palabras_por_segmento=35)
+    # Asignar etapas visuales (aunque ahora usamos prompts de DeepSeek)
     etapas, ubicaciones = asignar_etapas_visuales(segmentos)
     print(f"🎬 {len(segmentos)} segments generated")
     
-    recursos = generar_recursos_por_segmento(segmentos, etapas, ubicaciones, tema_elegido)
+    # Generar recursos con prompts de DeepSeek
+    recursos = generar_recursos_por_segmento(
+        segmentos, etapas, ubicaciones, segments_data, paleta_video, titulo
+    )
     if not recursos:
         print("❌ Error generating resources.")
         sys.exit(1)
@@ -1386,11 +1363,13 @@ def main():
     video_path = montar_video_shorts(recursos, fondo_path, "short_capital_en.mp4")
     print(f"🎬 Video assembled: {video_path}")
     
+    # Miniatura adaptada
     miniatura_path = None
     if prompt_miniatura:
         print("🖼️ Generating professional thumbnail...")
+        prompt_miniatura_final = construir_prompt_miniatura(titulo, prompt_miniatura, paleta_video)
         miniatura_path = crear_miniatura_profesional(
-            prompt_miniatura,
+            prompt_miniatura_final,
             palabras_portada,
             "miniatura_short_en.jpg"
         )
