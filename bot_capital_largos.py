@@ -99,24 +99,16 @@ def detectar_sujeto_visual(texto_ref):
     return "a cinematic financial scene with glowing charts, coins and data visualizations"
 
 # ================================================================
-# CONSTRUIR PROMPT DE IMAGEN POR SEGMENTO (USA EL PROMPT DE DEEPSEEK)
+# CONSTRUIR PROMPT DE IMAGEN POR SEGMENTO
 # ================================================================
 def construir_prompt_segmento(titulo, prompt_deepseek, idx_bloque, paleta):
-    """
-    Enriquece el prompt de imagen generado por DeepSeek (específico para el segmento)
-    con la paleta de colores, composición y restricciones.
-    Si DeepSeek no dio un prompt detallado, usa un fallback basado en el título.
-    """
-    # Si DeepSeek generó un prompt detallado para este segmento, usarlo como base
     if prompt_deepseek and len(prompt_deepseek.split()) > 5:
         base_prompt = prompt_deepseek
     else:
-        # Fallback: usar sujeto visual detectado del título
         sujeto = detectar_sujeto_visual(titulo)
         composicion = COMPOSICIONES_BLOQUE[idx_bloque % len(COMPOSICIONES_BLOQUE)]
         base_prompt = f"{sujeto}, {composicion}"
     
-    # Añadir estilo, paleta y restricciones
     return (
         f"{base_prompt}, color palette of {paleta}, "
         "cinematic financial documentary style, hyperrealistic, 8k resolution, "
@@ -126,7 +118,6 @@ def construir_prompt_segmento(titulo, prompt_deepseek, idx_bloque, paleta):
     )
 
 def construir_prompt_miniatura(titulo, prompt_deepseek, paleta):
-    """Fondo de miniatura adaptado al título y al prompt de DeepSeek."""
     if prompt_deepseek and len(prompt_deepseek.split()) > 5:
         base_prompt = prompt_deepseek
     else:
@@ -138,6 +129,27 @@ def construir_prompt_miniatura(titulo, prompt_deepseek, paleta):
         "hyperrealistic, 8k, high contrast, cinematic lighting, sharp focus, "
         "no people, no faces, no text, no letters, no numbers, no watermark, no black box"
     )
+
+# ================================================================
+# 🏷️ SANITIZAR HASHTAGS
+# ================================================================
+def sanitizar_hashtags(hashtags_str, max_tags=8):
+    """Limpia y formatea hashtags para YouTube/Rumble."""
+    if not hashtags_str:
+        return ""
+    tags = hashtags_str.split()
+    cleaned = []
+    for tag in tags:
+        tag = tag.strip()
+        if not tag:
+            continue
+        if not tag.startswith("#"):
+            tag = "#" + tag
+        tag = re.sub(r'[^a-zA-Z0-9#]', '', tag)
+        if tag and len(tag) > 1:
+            cleaned.append(tag)
+    cleaned = cleaned[:max_tags]
+    return " ".join(cleaned)
 
 # ================================================================
 # MÚSICA CORPORATE
@@ -484,7 +496,7 @@ RETURN ONLY THE EXPANDED SCRIPT TEXT, with the same blocks [HOOK], [INTRO], [PRO
         return None
 
 # ================================================================
-# GENERAR GUION LARGO (CON PROMPTS DE IMAGEN POR SEGMENTO)
+# GENERAR GUION LARGO (CON FORMATOS, TEMAS, HASHTAGS Y TÍTULO OPTIMIZADO)
 # ================================================================
 def generar_guion_largo(tipo, fecha_actual, idea=None):
     titulos_pub = cargar_titulos_publicados()["titulos"][-10:]
@@ -611,10 +623,17 @@ You are a PROFESSIONAL SCRIPTWRITER and FINANCE EXPERT. Write a DETAILED script 
 - Include rhetorical questions and analogies.
 - DO NOT use specific past dates.
 
+🎯 TITLE OPTIMIZATION (IMPORTANT):
+- Make the title more clickable but NOT sensationalist.
+- Add a curiosity gap (e.g., "What Happens When..." instead of "This Happened").
+- Use power words like "Why", "How", "The Truth About", "What You Need to Know".
+- Keep the title between 60-70 characters.
+- Use 1 emoji maximum.
+
 🎯 IMAGE PROMPTS (CRITICAL - MUST BE SEGMENT-SPECIFIC):
 For EACH segment, you MUST generate a DETAILED image prompt that VISUALLY REPRESENTS the content of that specific segment's text.
 
-RULES FOR IMAGE PROMPTS:
+RULES:
 1. Each segment MUST have a UNIQUE image prompt based on its own text content.
 2. If the segment talks about "panic selling", show panic selling visuals (red charts, fear).
 3. If the segment talks about "Bitcoin halving", show Bitcoin halving visuals.
@@ -625,12 +644,16 @@ RULES FOR IMAGE PROMPTS:
 8. Style: hyperrealistic, cinematic, neon, 8k.
 9. PROHIBITED: people, faces, text, numbers, letters, watermarks, black boxes.
 
-Examples:
-- HOOK segment (challenge): "dramatic wide shot of a glowing Bitcoin coin on a chessboard, neon cyan and gold lighting, high contrast, dark background"
-- PROBLEM segment (losses): "cinematic shot of red descending candlestick charts on multiple screens, intense red neon glow, dark trading room atmosphere"
-- SOLUTION segment (strategy): "isometric view of a glowing financial roadmap with checkpoints, neon green and blue lighting, clean composition"
+🎯 HASHTAGS RULES (CRITICAL - IN ENGLISH):
+- Generate 5-8 hashtags that are SPECIFIC to the video topic.
+- Include the main keyword(s) of the video.
+- Each hashtag must start with "#" and have no spaces.
+- DO NOT use generic hashtags like #shorts or #video.
+- DO NOT use #Finance or #Investing as dynamic (they are added automatically).
+- Separate hashtags with spaces.
+- Example for Bitcoin halving: "#BitcoinHalving #BTC #CryptoHalving #BitcoinNews #Halving2026"
 
-🎯 THUMBNAIL DESIGN (IMPORTANT):
+🎯 THUMBNAIL DESIGN:
 Create a prompt in ENGLISH for the thumbnail background. It should represent the OVERALL topic.
 - Style: "crypto YouTube thumbnail", neon, high contrast, cinematic, hyperrealistic.
 - PROHIBITED: people, faces, text.
@@ -642,19 +665,18 @@ Create a prompt in ENGLISH for the thumbnail background. It should represent the
 - NO hashtags (#) inside tags.
 - Tags should be simple keywords like: "bitcoin", "crypto", "trading".
 - Maximum 500 characters total.
-- Example: "bitcoin,crypto,trading,investing,finance,challenge"
 
 🚫 TITLES ALREADY PUBLISHED (DO NOT REPEAT):
 {titulos_referencia}
 
 📤 RESPONSE IN JSON:
 {{
-    "title": "Title with emoji and curiosity (60-70 chars, no past dates)",
-    "alternative_title": "Alternative title",
+    "title": "Optimized title (60-70 chars, with emoji and curiosity gap, no past dates)",
+    "alternative_title": "Alternative title for A/B testing",
     "keywords": ["kw1", "kw2", "kw3", "kw4", "kw5"],
     "description": "Full description with chapters and hashtags, including the challenge",
     "tags": "25-30 tags separated by commas (NO special characters, no #, no dates)",
-    "hashtags": "#hashtag1 #hashtag2",
+    "dynamic_hashtags": "5-8 hashtags specific to the topic (e.g., '#BitcoinHalving #BTC #CryptoHalving')",
     "script": "Full script of 1300-1500 words with the 6 marked blocks",
     "segments": [
         {{"block": "HOOK", "text": "text (~10 words)", "image_prompt": "Detailed prompt for THIS specific segment's content"}},
@@ -712,7 +734,9 @@ Create a prompt in ENGLISH for the thumbnail background. It should represent the
             if "thumbnail_prompt" not in result:
                 result["thumbnail_prompt"] = ""
             
-            # Verificar que cada segmento tenga image_prompt
+            if "dynamic_hashtags" not in result:
+                result["dynamic_hashtags"] = ""
+            
             for seg in result.get("segments", []):
                 if not seg.get("image_prompt") or len(seg["image_prompt"].split()) < 5:
                     seg["image_prompt"] = f"cinematic financial scene about {tema_elegido[:50]}, neon lighting, hyperrealistic, 8k, no people, no text"
@@ -881,7 +905,6 @@ def crear_miniatura_profesional(prompt_miniatura, texto_portada, salida="miniatu
         if len(palabras) > 3:
             texto = ' '.join(palabras[:3])
         
-        # Dividir en máximo 2 líneas para mejor ajuste
         palabras = texto.split()
         if len(palabras) > 1:
             mitad = len(palabras) // 2
@@ -892,7 +915,6 @@ def crear_miniatura_profesional(prompt_miniatura, texto_portada, salida="miniatu
         
         ruta_fuente = obtener_ruta_fuente()
         
-        # Auto-ajuste de tamaño de fuente (máx 1150px de ancho)
         size = 150
         while size >= 60:
             if ruta_fuente:
@@ -911,21 +933,17 @@ def crear_miniatura_profesional(prompt_miniatura, texto_portada, salida="miniatu
         alto_total = alto_linea * len(lineas)
         y_inicio = (720 - alto_total) // 2
         
-        # SIN rectángulo negro: solo texto con contorno grueso y sombra
         for i, linea in enumerate(lineas):
             bbox = draw.textbbox((0, 0), linea, font=font)
             text_w = bbox[2] - bbox[0]
             text_h = bbox[3] - bbox[1]
-            x = 1280 - text_w - 60  # Alineado a la derecha (espacio limpio del prompt)
+            x = 1280 - text_w - 60
             y = y_inicio + i * alto_linea
             
-            # Sombra proyectada
             draw.text((x + 6, y + 8), linea, fill=(0, 0, 0), font=font)
-            # Contorno negro grueso
             for dx in range(-6, 7, 2):
                 for dy in range(-6, 7, 2):
                     draw.text((x + dx, y + dy), linea, fill='black', font=font)
-            # Relleno amarillo brillante
             draw.text((x, y), linea, fill=(255, 230, 60), font=font)
         
         img.save(salida)
@@ -1173,9 +1191,9 @@ def montar_video_largo(recursos, fondo_path, salida="largo_capital_en.mp4", capi
     return salida
 
 # ================================================================
-# SUBIR A YOUTUBE
+# SUBIR A YOUTUBE (CON HASHTAGS DINÁMICOS)
 # ================================================================
-def subir_a_youtube(video_path, titulo, etiquetas_str, descripcion, miniatura_path=None):
+def subir_a_youtube(video_path, titulo, etiquetas_str, descripcion, miniatura_path=None, dynamic_hashtags=""):
     try:
         creds = Credentials.from_authorized_user_info(YOUTUBE_USER_TOKEN)
         youtube = build("youtube", "v3", credentials=creds)
@@ -1197,8 +1215,16 @@ def subir_a_youtube(video_path, titulo, etiquetas_str, descripcion, miniatura_pa
     
     print(f"📝 Final tags ({len(tags)}): {tags_str_final}")
     
+    # Hashtags fijos + dinámicos
+    hashtags_fijos = "#Finance #Investing"
+    if dynamic_hashtags:
+        dynamic_hashtags = sanitizar_hashtags(dynamic_hashtags, max_tags=8)
+        hashtags_final = f"{dynamic_hashtags} {hashtags_fijos}"
+    else:
+        hashtags_final = hashtags_fijos
+    
     disclaimer = "\n\n⚠️ IMPORTANT NOTICE: This content is for educational purposes only and does not constitute financial, legal, or investment advice."
-    descripcion_final = descripcion + disclaimer
+    descripcion_final = f"{descripcion}\n\n{hashtags_final}\n{disclaimer}"
     
     body = {
         "snippet": {
@@ -1253,18 +1279,19 @@ def limpiar_archivos_temporales():
     print("✅ Cleanup completed")
 
 # ================================================================
-# MAIN (IMÁGENES ADAPTADAS AL TÍTULO + SEGMENTO + SIN CAJAS NEGRAS)
+# MAIN
 # ================================================================
 def main():
     print("="*60)
     print("🎬 Capital Minds - LONG VIDEO BOT (ENGLISH VERSION)")
     print("   ✓ SEGMENT-SPECIFIC IMAGE PROMPTS from DeepSeek")
     print("   ✓ Each image matches the segment's narration content")
+    print("   ✓ DYNAMIC HASHTAGS: 5-8 hashtags specific to each video topic")
+    print("   ✓ OPTIMIZED TITLES: more clickable without being sensationalist")
     print("   ✓ Title-adapted visual subjects (fallback)")
     print("   ✓ 6 different compositions (one per block)")
-    print("   ✓ Random color palette per video (variety)")
+    print("   ✓ Random color palette per video")
     print("   ✓ NO black boxes: overlay removed + real font download")
-    print("   ✓ Negative prompt blocks black boxes/labels/numbers")
     print("   ✓ 25+ formats, 60+ topics, duplicate control ES/EN")
     print("="*60)
 
@@ -1290,7 +1317,6 @@ def main():
     estado = cargar_estado()
     fondo_path = seleccionar_fondo_disponible(estado)
     
-    # 🎨 Paleta aleatoria por video → cada video tiene un look distinto
     paleta_video = random.choice(PALETAS_VIDEO)
     print(f"🎨 Color palette for this video: {paleta_video}")
     
@@ -1311,27 +1337,24 @@ def main():
     segmentos = guion["segments"]
     palabras_portada = guion.get("cover_words", "WATCH THIS")
     prompt_miniatura = guion.get("thumbnail_prompt", "")
+    dynamic_hashtags = guion.get("dynamic_hashtags", "")
     
     print(f"🏷️ Title: {titulo}")
+    print(f"🏷️ Dynamic hashtags: {dynamic_hashtags}")
     
     capitulos = []
     for seg in segmentos:
         capitulos.append({"bloque": seg.get("block", "CHAPTER")})
     
     # ============================================================
-    # PRIMERA PASADA: imágenes SEGÚN EL TEXTO DEL SEGMENTO
+    # PRIMERA PASADA: imágenes según el texto del segmento
     # ============================================================
     print("\n🖼️ FIRST PASS: Generating segment-specific images...")
     imagenes_generadas = []
     for idx, seg in enumerate(segmentos):
         print(f"🎬 Segment {idx+1}/{len(segmentos)} - {seg.get('block', '')}")
-        
-        # Obtener el prompt de imagen generado por DeepSeek para ESTE segmento
         prompt_deepseek = seg.get("image_prompt", "")
-        
-        # Enriquecerlo con título, paleta y composición
         prompt_img = construir_prompt_segmento(titulo, prompt_deepseek, idx, paleta_video)
-        
         print(f"   📝 Prompt: {prompt_img[:120]}...")
         img_url = generar_imagen_horizontal(prompt_img, intentos=3)
         imagenes_generadas.append(img_url)
@@ -1375,12 +1398,10 @@ def main():
         audio_path = generar_audio(seg["text"], idx)
         if not audio_path:
             continue
-        
         try:
             dur = AudioFileClip(audio_path).duration
         except:
             dur = 10.0
-        
         recursos.append({
             "imagen_url": imagenes_generadas[idx],
             "audio_path": audio_path,
@@ -1398,7 +1419,7 @@ def main():
     print(f"🎬 Video assembled: {video_path}")
     
     # ============================================================
-    # MINIATURA adaptada al título y al prompt de DeepSeek
+    # MINIATURA
     # ============================================================
     miniatura_path = None
     print("🖼️ Generating professional thumbnail (title-adapted, no black box)...")
@@ -1409,7 +1430,9 @@ def main():
         "miniatura_largo_en.jpg"
     )
     
-    video_id = subir_a_youtube(video_path, titulo, tags_str, descripcion, miniatura_path)
+    video_id = subir_a_youtube(
+        video_path, titulo, tags_str, descripcion, miniatura_path, dynamic_hashtags
+    )
     
     guardar_titulo_publicado(titulo)
     guardar_tema_publicado(tema, tipo)
