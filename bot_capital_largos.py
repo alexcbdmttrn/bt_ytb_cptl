@@ -48,13 +48,13 @@ META_DIARIA_LARGOS = 1
 DIAS_SIN_REPETIR_TEMA = 45
 
 # ================================================================
-# VOZ EN INGLÉS (Jenny - US Female)
+# VOZ EN INGLÉS
 # ================================================================
 VOZ_FIJA = {"voz": "en-US-JennyNeural", "velocidad": "+10%", "tono": "-1Hz"}
 CONFIG_VOZ_ACTUAL = VOZ_FIJA
 
 # ================================================================
-# 🎨 VARIEDAD VISUAL: paletas, composiciones y sujetos por título
+# PALETAS Y COMPOSICIONES
 # ================================================================
 PALETAS_VIDEO = [
     "electric cyan and gold neon on dark navy",
@@ -99,7 +99,7 @@ def detectar_sujeto_visual(texto_ref):
     return "a cinematic financial scene with glowing charts, coins and data visualizations"
 
 # ================================================================
-# CONSTRUIR PROMPT DE IMAGEN POR SEGMENTO
+# CONSTRUIR PROMPT DE IMAGEN
 # ================================================================
 def construir_prompt_segmento(titulo, prompt_deepseek, idx_bloque, paleta):
     if prompt_deepseek and len(prompt_deepseek.split()) > 5:
@@ -131,10 +131,9 @@ def construir_prompt_miniatura(titulo, prompt_deepseek, paleta):
     )
 
 # ================================================================
-# 🏷️ SANITIZAR HASHTAGS
+# SANITIZAR HASHTAGS
 # ================================================================
 def sanitizar_hashtags(hashtags_str, max_tags=8):
-    """Limpia y formatea hashtags para YouTube/Rumble."""
     if not hashtags_str:
         return ""
     tags = hashtags_str.split()
@@ -152,7 +151,7 @@ def sanitizar_hashtags(hashtags_str, max_tags=8):
     return " ".join(cleaned)
 
 # ================================================================
-# MÚSICA CORPORATE
+# MÚSICA
 # ================================================================
 FONDOS_DISPONIBLES = [
     "The Ascent.mp3",
@@ -181,7 +180,7 @@ def seleccionar_fondo_disponible(estado):
     return seleccionada
 
 # ================================================================
-# FUNCIONES DE ESTADO (con soporte para revisar también los archivos en español)
+# FUNCIONES DE ESTADO
 # ================================================================
 def cargar_estado():
     try:
@@ -300,7 +299,7 @@ def tema_ya_publicado(tema, dias=45):
     return False
 
 # ================================================================
-# TREND-JACKING CON NOTICIAS DEL DÍA (EN INGLÉS)
+# TREND-JACKING
 # ================================================================
 def obtener_tema_trending():
     if not NEWSAPI_KEY:
@@ -333,7 +332,7 @@ def obtener_tema_trending():
         return None
 
 # ================================================================
-# GENERACIÓN DE IDEAS CON 25 FORMATOS (EN INGLÉS)
+# GENERACIÓN DE IDEAS
 # ================================================================
 def generar_idea_video_largo(tipo, fecha_actual):
     prompt = f"""
@@ -345,30 +344,30 @@ You are a CONTENT STRATEGIST for YouTube LONG-FORMAT videos (7-9 minutes) in the
 🎯 YOUR TASK: Generate 5 diverse LONG VIDEO IDEAS covering different ANGLES within finance/crypto.
 
 🎯 AVAILABLE FORMATS (choose a DIFFERENT one for each idea):
-1. NEWS BREAKDOWN: Deep dive into a recent financial news event (e.g., Fed rate decision, inflation report, Bitcoin ETF flow).
-2. EDUCATIONAL CONCEPT: Teach a comprehensive financial concept (e.g., "How to build a diversified portfolio", "Understanding market cycles").
-3. PSYCHOLOGY & BEHAVIOR: Analyze investor psychology in depth (e.g., "Why do we panic sell?", "The psychology of market bubbles").
-4. MARKET ANALYSIS: Full market update with data and charts (e.g., "Bitcoin dominance and altcoin season", "Global macro outlook").
-5. HISTORICAL LESSON: In-depth lesson from a past financial event (e.g., "The 2008 crisis explained", "What really happened at FTX").
-6. COMPARISON: Compare two assets or strategies comprehensively (e.g., "Bitcoin vs. Gold: which is the better hedge?", "Active vs. Passive investing").
-7. TIP & STRATEGY: Detailed practical guide (e.g., "How to secure your crypto assets", "How to read financial statements").
-8. MYTH BUSTING: Debunk common financial myths with evidence (e.g., "Is gold always a safe haven?", "Are all altcoins scams?").
-9. EXPERT OPINION: Analyze and summarize expert views (e.g., "What do the world's top investors think about Bitcoin?").
-10. DATA HIGHLIGHT: Deep dive into surprising data (e.g., "Why 70% of retail traders lose money", "Bitcoin's energy consumption: facts vs. fiction").
-11. INTERVIEW SUMMARY: Summarize a key interview or statement from a CEO or influencer.
+1. NEWS BREAKDOWN: Deep dive into a recent financial news event.
+2. EDUCATIONAL CONCEPT: Teach a comprehensive financial concept.
+3. PSYCHOLOGY & BEHAVIOR: Analyze investor psychology in depth.
+4. MARKET ANALYSIS: Full market update with data and charts.
+5. HISTORICAL LESSON: In-depth lesson from a past financial event.
+6. COMPARISON: Compare two assets or strategies comprehensively.
+7. TIP & STRATEGY: Detailed practical guide.
+8. MYTH BUSTING: Debunk common financial myths with evidence.
+9. EXPERT OPINION: Analyze and summarize expert views.
+10. DATA HIGHLIGHT: Deep dive into surprising data.
+11. INTERVIEW SUMMARY: Summarize a key interview or statement.
 12. COUNTRY ANALYSIS: Deep dive into crypto adoption or regulation in a specific country.
-13. BLOCKCHAIN TECHNOLOGY: Explain a technical concept in detail (e.g., "What is Layer 2?", "Proof of Stake vs. Proof of Work").
-14. ADVANCED TRADING: Detailed trading strategy (e.g., "How to use stop-loss and take-profit orders", "Technical analysis patterns").
-15. REGULATION UPDATE: Comprehensive discussion of new laws or regulations affecting crypto/finance.
-16. SUSTAINABILITY & MINING: Environmental impact of crypto mining and sustainable solutions.
-17. SUCCESS STORY: Deep dive into a successful investor or trader's strategy.
-18. FAILURE STORY: In-depth analysis of a loss or mistake and lessons learned.
+13. BLOCKCHAIN TECHNOLOGY: Explain a technical concept in detail.
+14. ADVANCED TRADING: Detailed trading strategy.
+15. REGULATION UPDATE: Comprehensive discussion of new laws or regulations.
+16. SUSTAINABILITY & MINING: Environmental impact of crypto mining.
+17. SUCCESS STORY: Deep dive into a successful investor's strategy.
+18. FAILURE STORY: In-depth analysis of a loss and lessons learned.
 19. PREDICTION: Detailed prediction about future trends or prices.
-20. TECHNICAL ANALYSIS: Explain chart patterns in detail (e.g., "Cup and handle", "Head and shoulders").
+20. TECHNICAL ANALYSIS: Explain chart patterns in detail.
 21. EXCHANGE COMPARISON: Comprehensive comparison of two popular exchanges.
-22. SECURITY BEST PRACTICES: In-depth security guide (e.g., "How to avoid phishing scams", "Hardware wallets explained").
-23. DEFI DEEP DIVE: Explain a DeFi protocol in detail (e.g., "What is Uniswap?", "How yield farming works").
-24. NFT & METAVERSE: Deep dive into the impact of NFTs or the metaverse on finance.
+22. SECURITY BEST PRACTICES: In-depth security guide.
+23. DEFI DEEP DIVE: Explain a DeFi protocol in detail.
+24. NFT & METAVERSE: Deep dive into the impact of NFTs or the metaverse.
 25. GEOPOLITICAL IMPACT: How global events affect markets.
 
 🎯 PREVENT REPETITION:
@@ -379,22 +378,20 @@ You are a CONTENT STRATEGIST for YouTube LONG-FORMAT videos (7-9 minutes) in the
 
 CONTENT TYPE: {tipo} (news, educational, scam, psychology, analysis)
 
-Your task is to generate 5 VIDEO IDEAS following the formats above.
-
-For each idea, write:
+Generate 5 VIDEO IDEAS following the formats above. For each:
 - Title (60-70 characters, with emoji, generating CURIOSITY but realistic).
-- 1-2 line description explaining the topic.
-- Format used (from the list above).
+- 1-2 line description.
+- Format used.
 - Curiosity level (1-10).
 
-Then CHOOSE THE BEST IDEA (the one with the most curiosity and the most DIFFERENT from previous videos) and return it.
+Then CHOOSE THE BEST IDEA and return it.
 
 RESPONSE IN JSON:
 {{
     "best_idea": {{
         "title": "Final title with curiosity (no past dates)",
         "description": "Idea description",
-        "format": "Name of the format used (e.g., 'Educational Concept')",
+        "format": "Name of the format",
         "type": "{tipo}"
     }},
     "ideas_generated": [
@@ -426,29 +423,51 @@ RESPONSE IN JSON:
         return None
 
 # ================================================================
-# SANITIZAR TAGS MEJORADO
+# 🏷️ SANITIZAR TAGS (MEJORADO)
 # ================================================================
-def sanitizar_tags(tags_str, max_chars=500):
+def sanitizar_tags(tags_str, max_tags=30):
+    """
+    Convierte una cadena de tags separados por coma en una lista válida para YouTube.
+    - Elimina caracteres especiales no permitidos.
+    - Elimina palabras demasiado largas (>30 caracteres).
+    - Limita a max_tags (30 por defecto).
+    - Elimina duplicados.
+    """
     if not tags_str:
         return []
+    
+    # Separar por coma y limpiar espacios
     raw_tags = [t.strip() for t in tags_str.split(",") if t.strip()]
+    
     cleaned = []
     for tag in raw_tags:
-        clean = re.sub(r'[^a-zA-Z0-9áéíóúüñÁÉÍÓÚÜÑ\s\-]', '', tag).strip()
+        # Solo permitir letras, números, espacios y guiones
+        clean = re.sub(r'[^a-zA-Z0-9áéíóúüñÁÉÍÓÚÜÑ\s\-]', '', tag)
+        clean = clean.strip()
+        # Eliminar espacios múltiples
+        clean = re.sub(r'\s+', ' ', clean)
+        # Si el tag es muy largo (>30 chars), truncar o descartar
         if clean and len(clean) > 1:
+            if len(clean) > 30:
+                clean = clean[:30]
             cleaned.append(clean)
-    cleaned = list(dict.fromkeys(cleaned))
-    result = ""
+    
+    # Eliminar duplicados manteniendo orden
+    seen = set()
+    cleaned_unique = []
     for tag in cleaned:
-        test = result + "," + tag if result else tag
-        if len(test) <= max_chars:
-            result = test
-        else:
-            break
-    return result.split(",") if result else []
+        tag_lower = tag.lower()
+        if tag_lower not in seen:
+            seen.add(tag_lower)
+            cleaned_unique.append(tag)
+    
+    # Limitar a max_tags
+    cleaned_unique = cleaned_unique[:max_tags]
+    
+    return cleaned_unique
 
 # ================================================================
-# EXPANSIÓN DE GUION (EN INGLÉS)
+# EXPANSIÓN DE GUION
 # ================================================================
 def expandir_guion_largo(guion_corto, tema, restriccion, fecha_actual):
     prompt = f"""
@@ -496,7 +515,7 @@ RETURN ONLY THE EXPANDED SCRIPT TEXT, with the same blocks [HOOK], [INTRO], [PRO
         return None
 
 # ================================================================
-# GENERAR GUION LARGO (CON FORMATOS, TEMAS, HASHTAGS Y TÍTULO OPTIMIZADO)
+# GENERAR GUION LARGO
 # ================================================================
 def generar_guion_largo(tipo, fecha_actual, idea=None):
     titulos_pub = cargar_titulos_publicados()["titulos"][-10:]
@@ -749,7 +768,7 @@ Create a prompt in ENGLISH for the thumbnail background. It should represent the
     sys.exit(1)
 
 # ================================================================
-# FILTRAR PROMPT DE MINIATURA
+# FILTRAR PROMPT
 # ================================================================
 def filtrar_prompt_miniatura(prompt):
     if not prompt:
@@ -775,7 +794,7 @@ def filtrar_prompt_miniatura(prompt):
     return prompt_filtrado
 
 # ================================================================
-# 🖼️ GENERAR IMAGEN HORIZONTAL (SIN enhance_prompt, SIN cajas negras)
+# GENERAR IMAGEN HORIZONTAL
 # ================================================================
 def generar_imagen_horizontal(prompt, intentos=3):
     prompt = prompt[:950]
@@ -820,7 +839,7 @@ def generar_imagen_horizontal(prompt, intentos=3):
     return None
 
 # ================================================================
-# GENERAR FONDO SÓLIDO (fallback)
+# GENERAR FONDO SÓLIDO
 # ================================================================
 def generar_fondo_solido(color=(20, 20, 50), ancho=1280, alto=720):
     img = Image.new('RGB', (ancho, alto), color)
@@ -829,7 +848,7 @@ def generar_fondo_solido(color=(20, 20, 50), ancho=1280, alto=720):
     return path
 
 # ================================================================
-# 🔤 FUENTE GRUESA REAL (descarga Anton, fallback a DejaVu del sistema)
+# FUENTE
 # ================================================================
 def obtener_ruta_fuente():
     if not os.path.exists("Anton.ttf"):
@@ -854,7 +873,7 @@ def obtener_ruta_fuente():
     return None
 
 # ================================================================
-# 🖼️ MINIATURA PROFESIONAL (SIN rectángulo negro, texto grande y legible)
+# MINIATURA PROFESIONAL
 # ================================================================
 def crear_miniatura_profesional(prompt_miniatura, texto_portada, salida="miniatura_largo_en.jpg"):
     print("🖼️ Generating professional thumbnail...")
@@ -954,7 +973,7 @@ def crear_miniatura_profesional(prompt_miniatura, texto_portada, salida="miniatu
         return None
 
 # ================================================================
-# SUBTÍTULOS CON PIL (en inglés)
+# SUBTÍTULOS
 # ================================================================
 def agregar_subtitulos_con_pil_16_9(imagen_path, texto, salida_path):
     try:
@@ -1002,7 +1021,7 @@ def agregar_subtitulos_con_pil_16_9(imagen_path, texto, salida_path):
         return imagen_path
 
 # ================================================================
-# GENERAR AUDIO (en inglés)
+# GENERAR AUDIO
 # ================================================================
 def generar_audio(texto, index):
     global CONFIG_VOZ_ACTUAL
@@ -1026,7 +1045,7 @@ def generar_audio(texto, index):
         return None
 
 # ================================================================
-# CAPÍTULOS VISUALES CON PIL (en inglés)
+# CAPÍTULOS VISUALES
 # ================================================================
 def crear_capitulo_visual_pil(titulo_capitulo, timestamp, duracion=3, ancho=1280, alto=720):
     try:
@@ -1063,7 +1082,7 @@ def crear_capitulo_visual_pil(titulo_capitulo, timestamp, duracion=3, ancho=1280
         return None
 
 # ================================================================
-# CTA FINAL "SUBSCRIBE" (en inglés)
+# CTA FINAL
 # ================================================================
 def crear_cta_final_pil(duracion=3, ancho=1280, alto=720):
     try:
@@ -1191,7 +1210,7 @@ def montar_video_largo(recursos, fondo_path, salida="largo_capital_en.mp4", capi
     return salida
 
 # ================================================================
-# SUBIR A YOUTUBE (CON HASHTAGS DINÁMICOS)
+# SUBIR A YOUTUBE (CON TAGS SANITIZADOS)
 # ================================================================
 def subir_a_youtube(video_path, titulo, etiquetas_str, descripcion, miniatura_path=None, dynamic_hashtags=""):
     try:
@@ -1201,17 +1220,17 @@ def subir_a_youtube(video_path, titulo, etiquetas_str, descripcion, miniatura_pa
         print(f"❌ Error authenticating: {e}")
         sys.exit(1)
     
+    # Sanitizar tags
     tags = sanitizar_tags(etiquetas_str)
     if not tags:
         print("⚠️ No valid tags found. Using default tags.")
         tags = ["finance", "investing", "crypto", "trading", "analysis"]
     
+    # Asegurar que no exceda 500 caracteres al unirlos con comas
     tags_str_final = ",".join(tags)
-    if len(tags_str_final) > 500:
-        tags = tags[:10]
+    while len(tags) > 5 and len(tags_str_final) > 500:
+        tags = tags[:-1]
         tags_str_final = ",".join(tags)
-        if len(tags_str_final) > 500:
-            tags = tags[:5]
     
     print(f"📝 Final tags ({len(tags)}): {tags_str_final}")
     
@@ -1284,15 +1303,10 @@ def limpiar_archivos_temporales():
 def main():
     print("="*60)
     print("🎬 Capital Minds - LONG VIDEO BOT (ENGLISH VERSION)")
-    print("   ✓ SEGMENT-SPECIFIC IMAGE PROMPTS from DeepSeek")
-    print("   ✓ Each image matches the segment's narration content")
-    print("   ✓ DYNAMIC HASHTAGS: 5-8 hashtags specific to each video topic")
-    print("   ✓ OPTIMIZED TITLES: more clickable without being sensationalist")
-    print("   ✓ Title-adapted visual subjects (fallback)")
-    print("   ✓ 6 different compositions (one per block)")
-    print("   ✓ Random color palette per video")
-    print("   ✓ NO black boxes: overlay removed + real font download")
-    print("   ✓ 25+ formats, 60+ topics, duplicate control ES/EN")
+    print("   ✓ SEGMENT-SPECIFIC IMAGE PROMPTS")
+    print("   ✓ DYNAMIC HASHTAGS")
+    print("   ✓ OPTIMIZED TITLES")
+    print("   ✓ TAGS SANITIZED (fixed YouTube 400 error)")
     print("="*60)
 
     tz_mexico = ZoneInfo("America/Mexico_City")
@@ -1346,10 +1360,8 @@ def main():
     for seg in segmentos:
         capitulos.append({"bloque": seg.get("block", "CHAPTER")})
     
-    # ============================================================
-    # PRIMERA PASADA: imágenes según el texto del segmento
-    # ============================================================
-    print("\n🖼️ FIRST PASS: Generating segment-specific images...")
+    # Generar imágenes
+    print("\n🖼️ Generating segment-specific images...")
     imagenes_generadas = []
     for idx, seg in enumerate(segmentos):
         print(f"🎬 Segment {idx+1}/{len(segmentos)} - {seg.get('block', '')}")
@@ -1364,11 +1376,8 @@ def main():
             print(f"   ❌ Failed to generate image.")
         time.sleep(10)
 
-    # ============================================================
-    # SEGUNDA PASADA: reutilizar imágenes para los que fallaron
-    # ============================================================
+    # Reutilizar imágenes para fallos
     print("\n🔄 SECOND PASS: Reusing images for failed segments...")
-
     def obtener_imagen_disponible(idx, imagenes):
         for i in range(idx - 1, -1, -1):
             if imagenes[i] is not None:
@@ -1386,11 +1395,9 @@ def main():
                 print(f"   ✅ Segment {idx+1}: using image from {origen}")
             else:
                 imagenes_generadas[idx] = generar_fondo_solido()
-                print(f"   🖼️ Segment {idx+1}: using solid background (no image available)")
+                print(f"   🖼️ Segment {idx+1}: using solid background")
 
-    # ============================================================
-    # TERCERA PASADA: audio y recursos
-    # ============================================================
+    # Generar audio y recursos
     print("\n🎵 Generating audio and building resources...")
     recursos = []
     for idx, seg in enumerate(segmentos):
@@ -1418,11 +1425,9 @@ def main():
     video_path = montar_video_largo(recursos, fondo_path, "largo_capital_en.mp4", capitulos)
     print(f"🎬 Video assembled: {video_path}")
     
-    # ============================================================
-    # MINIATURA
-    # ============================================================
+    # Miniatura
     miniatura_path = None
-    print("🖼️ Generating professional thumbnail (title-adapted, no black box)...")
+    print("🖼️ Generating professional thumbnail...")
     prompt_miniatura_final = construir_prompt_miniatura(titulo, prompt_miniatura, paleta_video)
     miniatura_path = crear_miniatura_profesional(
         prompt_miniatura_final,
