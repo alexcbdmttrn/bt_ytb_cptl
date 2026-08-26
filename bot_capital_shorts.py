@@ -26,7 +26,7 @@ from googleapiclient.http import MediaFileUpload
 # CONFIGURACIÓN
 # ================================================================
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
-AGNES_API_KEY = os.getenv("AGNES_API_KEY")
+PEXELS_API_KEY = os.getenv("PEXELS_API_KEY")
 YOUTUBE_USER_TOKEN = (
     json.loads(os.getenv("YOUTUBE_USER_TOKEN_CAPITAL"))
     if os.getenv("YOUTUBE_USER_TOKEN_CAPITAL")
@@ -754,88 +754,100 @@ def truncar_segmentos(segments):
     return nuevos
 
 # ================================================================
-# GENERAR IMAGEN VERTICAL (CON TIMEOUT 180s)
+# GENERAR IMAGEN VERTICAL (PEXELS API - PORTRAIT)
 # ================================================================
-def generar_imagen_vertical(prompt, intentos=3):
-    prompt = re.sub(r"\n+", " ", prompt).strip()
-    prompt = re.sub(r'"', "'", prompt)
-    prompt = prompt[:950]
+def generar_imagen_vertical(prompt, tema="", intentos=3):
+    # Pexels API usa consultas de búsqueda, no prompts generativos detallados.
+    search_query = tema if tema else prompt
     
-    url = "https://apihub.agnes-ai.com/v1/images/generations"
-    headers = {"Authorization": f"Bearer {AGNES_API_KEY}", "Content-Type": "application/json"}
-    
-    negative = (
-        "multiple people, crowd, group, two people, three people, "
-        "close-up face, portrait, headshot, face filling frame, "
-        "gore, blood, violence, weapons, "
-        "clones, duplicates, twins, doppelganger, "
-        "deformed, bad anatomy, extra limbs, missing limbs, "
-        "blurry, low quality, pixelated, "
-        "text, watermark, logo, signature, "
-        "cartoon, animated, painting, drawing, sketch, "
-        "oversaturated, oversharpened, artificial, fake, "
-        "abandoned, rusty, decayed, ruined (unless historical), "
-        "monster, zombie, corpse, ghost, "
-        "surreal, impossible, floating objects"
-    )
-    
-    payload = {
-        "model": "agnes-image-2.1-flash",
-        "prompt": prompt,
-        "negative_prompt": negative,
-        "width": 1080,
-        "height": 1920,
-        "num_images": 1,
-    }
+    # Limpiar consulta: mantener solo letras y espacios, máx 50 caracteres
+    search_query = re.sub(r'[^a-zA-Z0-9\s]', '', search_query).strip()
+    if len(search_query) > 50:
+        search_query = search_query[:50]
+    if not search_query:
+        search_query = "finance business technology"
+
+    # Consultas de respaldo si la primera falla
+    fallback_queries = [
+        search_query,
+        "finance business technology",
+        "abstract dark background",
+        "stock market charts"
+    ]
     
     for intento in range(intentos):
+        current_query = fallback_queries[intento % len(fallback_queries)]
+        # Usamos orientation=portrait para obtener imágenes verticales (9:16)
+        url = f"https://api.pexels.com/v1/search?query={current_query.replace(' ', '+')}&per_page=1&orientation=portrait"
+        headers = {"Authorization": PEXELS_API_KEY}
+        
         try:
-            print(f"   🖼️ Generating image {intento+1}/{intentos}...")
-            r = requests.post(url, headers=headers, json=payload, timeout=180)
+            print(f"   🖼️ Buscando en Pexels (vertical): '{current_query}' (intento {intento+1}/{intentos})...")
+            r = requests.get(url, headers=headers, timeout=30)
             if r.status_code == 200:
                 data = r.json()
-                if data.get("data") and len(data["data"]) > 0:
-                    return data["data"][0]["url"]
+                if data.get("photos") and len(data["photos"]) > 0:
+                    photo = data["photos"][0]
+                    # Usar tamaño 'portrait' u 'original'
+                    img_url = photo["src"].get("portrait") or photo["src"].get("original")
+                    print(f"   ✅ Imagen vertical encontrada exitosamente en Pexels.")
+                    return img_url
             else:
-                print(f"   ⚠️ Error {r.status_code}: {r.text[:100]}")
+                print(f"   ⚠️ Error de API Pexels {r.status_code} - {r.text[:200]}")
         except Exception as e:
-            print(f"   ⚠️ Connection error: {e}")
+            print(f"   ⚠️ Error de conexión: {e}")
+            
         if intento < intentos - 1:
-            time.sleep(10)
+            print("   ⏳ Esperando 5 segundos antes de reintentar...")
+            time.sleep(5)
+            
     return None
 
 # ================================================================
-# GENERAR IMAGEN HORIZONTAL PARA MINIATURA (CON TIMEOUT 180s)
+# GENERAR IMAGEN HORIZONTAL PARA MINIATURA (PEXELS API - LANDSCAPE)
 # ================================================================
-def generar_imagen_horizontal(prompt, intentos=3):
-    prompt_completo = f"{prompt}, hyperrealistic, 8k, cinematic lighting, high contrast, sharp focus, no people, no text, no watermark, electric cyan neon glow, dark background"
-    prompt_completo = prompt_completo[:950]
+def generar_imagen_horizontal(prompt, tema="", intentos=3):
+    # Pexels API usa consultas de búsqueda.
+    search_query = tema if tema else prompt
     
-    url = "https://apihub.agnes-ai.com/v1/images/generations"
-    headers = {"Authorization": f"Bearer {AGNES_API_KEY}", "Content-Type": "application/json"}
-    negative = "multiple people, crowd, close-up face, portrait, headshot, gore, blood, clones, deformed, blurry, text, watermark, low quality"
-    payload = {
-        "model": "agnes-image-2.1-flash",
-        "prompt": prompt_completo,
-        "negative_prompt": negative,
-        "width": 1280,
-        "height": 720,
-        "num_images": 1,
-    }
+    search_query = re.sub(r'[^a-zA-Z0-9\s]', '', search_query).strip()
+    if len(search_query) > 50:
+        search_query = search_query[:50]
+    if not search_query:
+        search_query = "finance business technology"
+
+    fallback_queries = [
+        search_query,
+        "finance business technology",
+        "abstract dark background",
+        "stock market charts"
+    ]
+    
     for intento in range(intentos):
+        current_query = fallback_queries[intento % len(fallback_queries)]
+        # Usamos orientation=landscape para miniaturas
+        url = f"https://api.pexels.com/v1/search?query={current_query.replace(' ', '+')}&per_page=1&orientation=landscape"
+        headers = {"Authorization": PEXELS_API_KEY}
+        
         try:
-            print(f"   🖼️ Generating thumbnail background {intento+1}/{intentos}...")
-            r = requests.post(url, headers=headers, json=payload, timeout=180)
+            print(f"   🖼️ Buscando en Pexels (horizontal): '{current_query}' (intento {intento+1}/{intentos})...")
+            r = requests.get(url, headers=headers, timeout=30)
             if r.status_code == 200:
                 data = r.json()
-                if data.get("data") and len(data["data"]) > 0:
-                    return data["data"][0]["url"]
+                if data.get("photos") and len(data["photos"]) > 0:
+                    photo = data["photos"][0]
+                    img_url = photo["src"].get("landscape") or photo["src"].get("original")
+                    print(f"   ✅ Imagen horizontal encontrada exitosamente en Pexels.")
+                    return img_url
             else:
-                print(f"   ⚠️ Error {r.status_code}")
+                print(f"   ⚠️ Error de API Pexels {r.status_code} - {r.text[:200]}")
         except Exception as e:
-            print(f"   ⚠️ Connection error: {e}")
+            print(f"   ⚠️ Error de conexión: {e}")
+            
         if intento < intentos - 1:
-            time.sleep(10)
+            print("   ⏳ Esperando 5 segundos antes de reintentar...")
+            time.sleep(5)
+            
     return None
 
 # ================================================================
@@ -870,7 +882,7 @@ def generar_audio(texto, index, intentos_por_voz=2):
 # ================================================================
 # GENERAR RECURSOS POR SEGMENTO (USANDO PROMPTS DE DEEPSEEK)
 # ================================================================
-def generar_recursos_por_segmento(segmentos, segments_data, paleta_video, titulo, intentos_imagen=3):
+def generar_recursos_por_segmento(segmentos, segments_data, paleta_video, titulo, tema="", intentos_imagen=3):
     recursos = []
     total = len(segmentos)
     last_successful_url = None
@@ -888,12 +900,12 @@ def generar_recursos_por_segmento(segmentos, segments_data, paleta_video, titulo
         
         img_url = None
         for intento in range(intentos_imagen):
-            img_url = generar_imagen_vertical(prompt_img, intentos=1)
+            img_url = generar_imagen_vertical(prompt_img, tema=tema, intentos=1)
             if img_url:
                 print(f"    ✅ Image generated (attempt {intento+1})")
                 last_successful_url = img_url
                 break
-            time.sleep(10)
+            time.sleep(5)
         
         # REUTILIZACIÓN DE IMAGEN ANTERIOR SI FALLA
         if not img_url:
@@ -902,8 +914,8 @@ def generar_recursos_por_segmento(segmentos, segments_data, paleta_video, titulo
                 img_url = last_successful_url
             else:
                 print(f"    ⚠️ No previous image. Retrying...")
-                time.sleep(10)
-                img_url = generar_imagen_vertical(prompt_img, intentos=1)
+                time.sleep(5)
+                img_url = generar_imagen_vertical(prompt_img, tema=tema, intentos=1)
                 if img_url:
                     last_successful_url = img_url
                 else:
@@ -935,8 +947,8 @@ def generar_recursos_por_segmento(segmentos, segments_data, paleta_video, titulo
         })
         
         if idx < total - 1:
-            print(f"   ⏳ Waiting 10 seconds...")
-            time.sleep(10)
+            print(f"   ⏳ Waiting 5 seconds...")
+            time.sleep(5)
     
     return recursos
 
@@ -1034,7 +1046,7 @@ def obtener_ruta_fuente():
 def crear_miniatura_profesional(prompt_miniatura, texto_portada, salida="miniatura_short_en.jpg"):
     try:
         print("🖼️ Generating thumbnail background...")
-        fondo_url = generar_imagen_horizontal(prompt_miniatura, intentos=2)
+        fondo_url = generar_imagen_horizontal(prompt_miniatura, tema=texto_portada, intentos=2)
         if not fondo_url:
             print("⚠️ Could not generate background, using solid background")
             fondo_path = generar_fondo_solido(color=(10, 10, 30), ancho=1280, alto=720)
@@ -1307,6 +1319,7 @@ def limpiar_archivos_temporales():
 def main():
     print("="*60)
     print("🎬 Capital Minds - SHORTS BOT (ENGLISH VERSION) - IMPROVED")
+    print("   ✓ PEXELS API FOR HIGH-QUALITY IMAGES (VERTICAL & LANDSCAPE)")
     print("   ✓ SEGMENT-SPECIFIC IMAGE PROMPTS from DeepSeek")
     print("   ✓ Each image matches the segment's narration content")
     print("   ✓ DYNAMIC HASHTAGS: 4-6 hashtags specific to each Short topic")
@@ -1373,7 +1386,7 @@ def main():
     
     # Generar recursos con prompts de DeepSeek
     recursos = generar_recursos_por_segmento(
-        segmentos, segments_data, paleta_video, titulo
+        segmentos, segments_data, paleta_video, titulo, tema=tema_elegido
     )
     if not recursos:
         print("❌ Error generating resources.")
