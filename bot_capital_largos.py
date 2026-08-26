@@ -27,7 +27,7 @@ from googleapiclient.http import MediaFileUpload
 # CONFIGURACIÓN
 # ================================================================
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
-AGNES_API_KEY = os.getenv("AGNES_API_KEY")
+PEXELS_API_KEY = os.getenv("PEXELS_API_KEY")
 YOUTUBE_USER_TOKEN = (
     json.loads(os.getenv("YOUTUBE_USER_TOKEN_CAPITAL"))
     if os.getenv("YOUTUBE_USER_TOKEN_CAPITAL")
@@ -426,33 +426,21 @@ RESPONSE IN JSON:
 # 🏷️ SANITIZAR TAGS (MEJORADO)
 # ================================================================
 def sanitizar_tags(tags_str, max_tags=30):
-    """
-    Convierte una cadena de tags separados por coma en una lista válida para YouTube.
-    - Elimina caracteres especiales no permitidos.
-    - Elimina palabras demasiado largas (>30 caracteres).
-    - Limita a max_tags (30 por defecto).
-    - Elimina duplicados.
-    """
     if not tags_str:
         return []
     
-    # Separar por coma y limpiar espacios
     raw_tags = [t.strip() for t in tags_str.split(",") if t.strip()]
     
     cleaned = []
     for tag in raw_tags:
-        # Solo permitir letras, números, espacios y guiones
         clean = re.sub(r'[^a-zA-Z0-9áéíóúüñÁÉÍÓÚÜÑ\s\-]', '', tag)
         clean = clean.strip()
-        # Eliminar espacios múltiples
         clean = re.sub(r'\s+', ' ', clean)
-        # Si el tag es muy largo (>30 chars), truncar o descartar
         if clean and len(clean) > 1:
             if len(clean) > 30:
                 clean = clean[:30]
             cleaned.append(clean)
     
-    # Eliminar duplicados manteniendo orden
     seen = set()
     cleaned_unique = []
     for tag in cleaned:
@@ -461,7 +449,6 @@ def sanitizar_tags(tags_str, max_tags=30):
             seen.add(tag_lower)
             cleaned_unique.append(tag)
     
-    # Limitar a max_tags
     cleaned_unique = cleaned_unique[:max_tags]
     
     return cleaned_unique
@@ -794,48 +781,52 @@ def filtrar_prompt_miniatura(prompt):
     return prompt_filtrado
 
 # ================================================================
-# GENERAR IMAGEN HORIZONTAL
+# GENERAR IMAGEN HORIZONTAL (PEXELS API)
 # ================================================================
-def generar_imagen_horizontal(prompt, intentos=3):
-    prompt = prompt[:950]
-    prompt_completo = (
-        f"{prompt}, hyperrealistic, 8k, cinematic lighting, high contrast, sharp focus, "
-        "wide shot, environment as main subject, no people, no faces, no text, no watermark"
-    )
-    prompt_completo = prompt_completo[:950]
+def generar_imagen_horizontal(prompt, tema="", intentos=3):
+    # Pexels API usa consultas de búsqueda, no prompts generativos detallados.
+    search_query = tema if tema else prompt
     
-    url = "https://apihub.agnes-ai.com/v1/images/generations"
-    headers = {"Authorization": f"Bearer {AGNES_API_KEY}", "Content-Type": "application/json"}
-    negative = (
-        "people, person, human, face, hands, crowd, portrait, close-up face, "
-        "text, letters, words, numbers, digits, labels, captions, watermark, logo, signature, "
-        "black box, black rectangle, censored, redacted, text box, UI overlay, frame, border, "
-        "gore, blood, clones, deformed, mutated, blurry, low quality, oversaturated"
-    )
-    payload = {
-        "model": "agnes-image-2.1-flash",
-        "prompt": prompt_completo,
-        "negative_prompt": negative,
-        "width": 1280,
-        "height": 720,
-        "num_images": 1,
-    }
+    # Limpiar consulta: mantener solo letras y espacios, máx 50 caracteres
+    search_query = re.sub(r'[^a-zA-Z0-9\s]', '', search_query).strip()
+    if len(search_query) > 50:
+        search_query = search_query[:50]
+    if not search_query:
+        search_query = "finance business technology"
+
+    # Consultas de respaldo si la primera falla
+    fallback_queries = [
+        search_query,
+        "finance business technology",
+        "abstract dark background",
+        "stock market charts"
+    ]
+    
     for intento in range(intentos):
+        current_query = fallback_queries[intento % len(fallback_queries)]
+        url = f"https://api.pexels.com/v1/search?query={current_query.replace(' ', '+')}&per_page=1&orientation=landscape"
+        headers = {"Authorization": PEXELS_API_KEY}
+        
         try:
-            print(f"   🖼️ Sending prompt to Agnes (attempt {intento+1}/{intentos})...")
-            r = requests.post(url, headers=headers, json=payload, timeout=180)
+            print(f"   🖼️ Buscando en Pexels: '{current_query}' (intento {intento+1}/{intentos})...")
+            r = requests.get(url, headers=headers, timeout=30)
             if r.status_code == 200:
                 data = r.json()
-                if data.get("data") and len(data["data"]) > 0:
-                    print(f"   ✅ Image generated successfully on attempt {intento+1}.")
-                    return data["data"][0]["url"]
+                if data.get("photos") and len(data["photos"]) > 0:
+                    photo = data["photos"][0]
+                    # Usar tamaño 'landscape' u 'original'
+                    img_url = photo["src"].get("landscape") or photo["src"].get("original")
+                    print(f"   ✅ Imagen encontrada exitosamente en Pexels.")
+                    return img_url
             else:
-                print(f"   ⚠️ Error {r.status_code} - {r.text[:400]}")
+                print(f"   ⚠️ Error de API Pexels {r.status_code} - {r.text[:200]}")
         except Exception as e:
-            print(f"   ⚠️ Connection error: {e}")
+            print(f"   ⚠️ Error de conexión: {e}")
+            
         if intento < intentos - 1:
-            print("   ⏳ Waiting 10 seconds before retrying...")
-            time.sleep(10)
+            print("   ⏳ Esperando 5 segundos antes de reintentar...")
+            time.sleep(5)
+            
     return None
 
 # ================================================================
@@ -889,13 +880,13 @@ def crear_miniatura_profesional(prompt_miniatura, texto_portada, salida="miniatu
     for intento, prompt in enumerate(prompts_a_intentar[:3], start=1):
         if not prompt:
             continue
-        print(f"   🖼️ Attempt {intento}/3 generating thumbnail...")
+        print(f"   🖼️ Attempt {intento}/3 searching thumbnail...")
         fondo_url = generar_imagen_horizontal(prompt, intentos=1)
         if fondo_url:
             break
         if intento < 3:
-            print("   ⏳ Waiting 10 seconds...")
-            time.sleep(10)
+            print("   ⏳ Waiting 5 seconds...")
+            time.sleep(5)
 
     if not fondo_url:
         print("⚠️ Could not generate background, using placeholder")
@@ -1220,13 +1211,11 @@ def subir_a_youtube(video_path, titulo, etiquetas_str, descripcion, miniatura_pa
         print(f"❌ Error authenticating: {e}")
         sys.exit(1)
     
-    # Sanitizar tags
     tags = sanitizar_tags(etiquetas_str)
     if not tags:
         print("⚠️ No valid tags found. Using default tags.")
         tags = ["finance", "investing", "crypto", "trading", "analysis"]
     
-    # Asegurar que no exceda 500 caracteres al unirlos con comas
     tags_str_final = ",".join(tags)
     while len(tags) > 5 and len(tags_str_final) > 500:
         tags = tags[:-1]
@@ -1234,7 +1223,6 @@ def subir_a_youtube(video_path, titulo, etiquetas_str, descripcion, miniatura_pa
     
     print(f"📝 Final tags ({len(tags)}): {tags_str_final}")
     
-    # Hashtags fijos + dinámicos
     hashtags_fijos = "#Finance #Investing"
     if dynamic_hashtags:
         dynamic_hashtags = sanitizar_hashtags(dynamic_hashtags, max_tags=8)
@@ -1303,7 +1291,7 @@ def limpiar_archivos_temporales():
 def main():
     print("="*60)
     print("🎬 Capital Minds - LONG VIDEO BOT (ENGLISH VERSION)")
-    print("   ✓ SEGMENT-SPECIFIC IMAGE PROMPTS")
+    print("   ✓ PEXELS API FOR HIGH-QUALITY IMAGES")
     print("   ✓ DYNAMIC HASHTAGS")
     print("   ✓ OPTIMIZED TITLES")
     print("   ✓ TAGS SANITIZED (fixed YouTube 400 error)")
@@ -1361,20 +1349,20 @@ def main():
         capitulos.append({"bloque": seg.get("block", "CHAPTER")})
     
     # Generar imágenes
-    print("\n🖼️ Generating segment-specific images...")
+    print("\n🖼️ Generating segment-specific images via Pexels...")
     imagenes_generadas = []
     for idx, seg in enumerate(segmentos):
         print(f"🎬 Segment {idx+1}/{len(segmentos)} - {seg.get('block', '')}")
-        prompt_deepseek = seg.get("image_prompt", "")
-        prompt_img = construir_prompt_segmento(titulo, prompt_deepseek, idx, paleta_video)
+        prompt_img = construir_prompt_segmento(titulo, seg.get("image_prompt", ""), idx, paleta_video)
         print(f"   📝 Prompt: {prompt_img[:120]}...")
-        img_url = generar_imagen_horizontal(prompt_img, intentos=3)
+        # Pasamos 'tema' para que la búsqueda en Pexels sea más precisa
+        img_url = generar_imagen_horizontal(prompt_img, tema=tema, intentos=3)
         imagenes_generadas.append(img_url)
         if img_url:
-            print(f"   ✅ Image generated successfully.")
+            print(f"   ✅ Image found successfully.")
         else:
-            print(f"   ❌ Failed to generate image.")
-        time.sleep(10)
+            print(f"   ❌ Failed to find image.")
+        time.sleep(2)
 
     # Reutilizar imágenes para fallos
     print("\n🔄 SECOND PASS: Reusing images for failed segments...")
