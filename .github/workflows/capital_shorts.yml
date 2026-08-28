@@ -2,10 +2,10 @@ name: Bot YouTube - Shorts Capital Digital (3 al día)
 
 on:
   schedule:
-    - cron: '0 13 * * *'   # 8:00 AM CDMX (13:00 UTC)
-    - cron: '0 17 * * *'   # 12:00 PM CDMX (17:00 UTC)
-    - cron: '0 21 * * *'   # 4:00 PM CDMX (21:00 UTC)
-    - cron: '0 23 * * *'   # 6:00 PM CDMX (23:00 UTC) - RESPARDO
+    - cron: '12 13 * * *'   # 8:12 AM CDMX (13:12 UTC)
+    - cron: '28 17 * * *'   # 12:28 PM CDMX (17:28 UTC)
+    - cron: '41 21 * * *'   # 4:41 PM CDMX (21:41 UTC)
+    - cron: '53 23 * * *'   # 6:53 PM CDMX (23:53 UTC) - RESPALDO
   workflow_dispatch:
 
 permissions:
