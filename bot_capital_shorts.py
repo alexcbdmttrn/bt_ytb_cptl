@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 import os
 import random
@@ -38,6 +38,7 @@ CANAL_LINK = "https://www.youtube.com/@CapitalMinds"
 ESTADO_FILE = "estado_capital_shorts_en.json"
 TITULOS_FILE = "titulos_capital_shorts_en_publicados.json"
 TEMAS_PUBLICADOS_FILE = "temas_shorts_en_publicados.json"
+TRENDS_FILE = "trends_semanal.json"
 
 ESTADO_FILE_ES = "estado_capital_shorts.json"
 TITULOS_FILE_ES = "titulos_capital_shorts_publicados.json"
@@ -98,44 +99,451 @@ def detectar_sujeto_visual(texto_ref):
     return "a cinematic financial scene with glowing charts, coins and data visualizations"
 
 # ================================================================
-# CONSTRUIR PROMPT DE IMAGEN POR SEGMENTO (USANDO PROMPT DE DEEPSEEK)
+# 📊 ANALISIS SEMANAL DE TRENDS CON DEEPSEEK
 # ================================================================
-def construir_prompt_segmento(titulo, prompt_deepseek, idx_bloque, paleta):
-    """Enriquece el prompt de DeepSeek con paleta y composición para vertical."""
-    if prompt_deepseek and len(prompt_deepseek.split()) > 5:
-        base_prompt = prompt_deepseek
-    else:
-        sujeto = detectar_sujeto_visual(titulo)
-        composicion = COMPOSICIONES_BLOQUE[idx_bloque % len(COMPOSICIONES_BLOQUE)]
-        base_prompt = f"{sujeto}, {composicion}"
+def analizar_trends_semanal():
+    """
+    Usa DeepSeek para analizar qué temas están trending semanalmente
+    """
     
-    return (
-        f"{base_prompt}, color palette of {paleta}, "
-        "cinematic financial documentary style, hyperrealistic, 8k resolution, "
-        "dramatic lighting, high contrast, sharp focus, "
-        "no people, no faces, no hands, no text, no letters, no numbers, no logos, "
-        "no watermark, no black box, no rectangle overlay, vertical 9:16"
-    )
+    temas_pub = cargar_temas_publicados()
+    
+    hoy = datetime.now(ZoneInfo("America/Mexico_City")).date()
+    temas_recientes = []
+    for t in temas_pub:
+        try:
+            fecha_tema = datetime.strptime(t["fecha"], "%Y-%m-%d").date()
+            if (hoy - fecha_tema).days <= 30:
+                temas_recientes.append(t["tema"])
+        except:
+            continue
+    
+    prompt = f"""
+You are a VIRAL TREND ANALYST for YouTube Shorts in finance/crypto.
 
-def construir_prompt_miniatura(titulo, prompt_deepseek, paleta):
-    """Fondo de miniatura adaptado al título y al prompt de DeepSeek."""
-    if prompt_deepseek and len(prompt_deepseek.split()) > 5:
-        base_prompt = prompt_deepseek
-    else:
-        sujeto = detectar_sujeto_visual(titulo)
-        base_prompt = f"{sujeto}, dramatic composition with clean dark empty space on the RIGHT side"
+CURRENT DATE: September 2024
+YOUR TASK: Identify VIRAL TOPICS for this week.
+
+📊 RECENTLY PUBLISHED TOPICS (avoid repeating):
+{chr(10).join(temas_recientes[:10]) if temas_recientes else "None"}
+
+🔥 TRENDING NOW (September 2024):
+
+Based on current events, these topics are HOT:
+1. Bitcoin price reaction to Fed rate cut
+2. Federal Reserve interest rate decisions
+3. Bitcoin vs Gold performance comparison
+4. Crypto market volatility after economic news
+5. Inflation data (CPI) impact on crypto
+6. Central banks buying gold reserves
+7. Bitcoin halving aftermath effects
+8. Altcoin season predictions
+9. Crypto regulation updates
+10. DeFi and staking yields
+
+ HIGH-SEARCH-VOLUME KEYWORDS:
+- "Bitcoin price" (most searched)
+- "Cryptocurrency"
+- "Crypto news"
+- "Bitcoin crash"
+- "Fed rate cut"
+- "Gold price"
+- "Inflation"
+- "Stock market"
+- "Crypto scams"
+- "Passive income crypto"
+
+YOUR TASK: Generate 10 VIDEO TOPICS for this week.
+
+For each topic provide:
+- Topic name
+- Why it's trending NOW
+- Viral potential (1-10)
+- Best format (news/educational/psychology/analysis)
+- Suggested hook (first 3 seconds)
+
+Return in JSON:
+{{
+    "trending_topics": [
+        {{
+            "topic": "Bitcoin Fed Rate Cut Reaction",
+            "why_trending": "Fed just cut rates, Bitcoin reacted +7.7%",
+            "viral_score": 9,
+            "best_format": "news",
+            "hook": "Bitcoin just did THIS after Fed announcement..."
+        }},
+        ...
+    ],
+    "topics_to_avoid": ["topic1", "topic2"],
+    "best_topic_this_week": "Bitcoin Fed Rate Cut Reaction"
+}}
+"""
     
-    return (
-        f"{base_prompt}, color palette of {paleta}, youtube finance thumbnail style, "
-        "hyperrealistic, 8k, high contrast, cinematic lighting, sharp focus, "
-        "no people, no faces, no text, no letters, no numbers, no watermark, no black box"
-    )
+    url = "https://api.deepseek.com/v1/chat/completions"
+    headers = {"Authorization": f"Bearer {DEEPSEEK_API_KEY}", "Content-Type": "application/json"}
+    payload = {
+        "model": "deepseek-chat",
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.7,
+        "max_tokens": 1500,
+        "response_format": {"type": "json_object"}
+    }
+    
+    try:
+        print("📊 Analyzing weekly trends with DeepSeek...")
+        r = requests.post(url, headers=headers, json=payload, timeout=90)
+        r.raise_for_status()
+        data = r.json()
+        content = data["choices"][0]["message"]["content"]
+        
+        inicio = content.find("{")
+        fin = content.rfind("}")
+        json_str = content[inicio:fin+1]
+        
+        trends = json.loads(json_str)
+        
+        with open(TRENDS_FILE, "w", encoding="utf-8") as f:
+            json.dump(trends, f, indent=2, ensure_ascii=False)
+        
+        print(f"   ✅ Best topic this week: {trends.get('best_topic_this_week', 'N/A')}")
+        return trends
+        
+    except Exception as e:
+        print(f"⚠️ Error analyzing trends: {e}")
+        return None
 
 # ================================================================
-# 🏷️ SANITIZAR HASHTAGS
+# 🎬 GENERAR IDEA DE VIDEO CON FÓRMULAS VIRALES
+# ================================================================
+def generar_idea_video(tipo, fecha_actual, trends_data=None):
+    """
+    PROMPT MEJORADO: Enfocado en viralidad y CTR alto usando fórmulas probadas
+    """
+    
+    # Si tenemos trends, usar el mejor tema
+    tema_sugerido = ""
+    if trends_data and "best_topic_this_week" in trends_data:
+        tema_sugerido = f"SUGGESTED TOPIC: {trends_data['best_topic_this_week']}\n"
+    
+    prompt = f"""
+You are a VIRAL CONTENT STRATEGIST for YouTube Shorts in finance/crypto.
+
+📅 CURRENT DATE: {fecha_actual}
+📊 YOUR GOAL: Generate ideas that get 10,000+ views
+
+{tema_sugerido}
+VIRAL TITLE FORMULAS THAT WORK (use these):
+
+FORMULA 1 - FEAR + URGENCY:
+"Why [TOPIC] Will CRASH in 24 Hours 🚨"
+"WARNING: Don't Buy [CRYPTO] Until You See This"
+
+FORMULA 2 - CURIOSITY GAP:
+"The [NUMBER] Secret About [TOPIC] Nobody Talks About"
+"What They're NOT Telling You About [NEWS]"
+
+FORMULA 3 - CONTROVERSY:
+"[COMMON BELIEF] Is a LIE - Here's Proof"
+"Why 90% of People Are WRONG About [TOPIC]"
+
+FORMULA 4 - SPECIFIC NUMBER + PROMISE:
+"How I Made $[AMOUNT] with [STRATEGY] in [TIME]"
+"[NUMBER] Reasons [TOPIC] Will EXPLODE This Week"
+
+FORMULA 5 - COMPARISON SHOCK:
+"[A] vs [B]: The SHOCKING Winner"
+"I Tested [X] for 30 Days - Results Surprised Me"
+
+FORMULA 6 - BREAKING NEWS:
+"BREAKING: [EVENT] Just Happened"
+"[EVENT] EXPOSED: The Truth"
+
+ TRENDING TOPICS RIGHT NOW (September 2024):
+- Bitcoin price volatility after Fed rate cut
+- Fed interest rate decisions impact on crypto
+- Bitcoin vs Gold performance comparison
+- Crypto market reactions to economic news
+- Inflation data and cryptocurrency
+- Central banks buying gold
+- Bitcoin halving effects
+- Altcoin season predictions
+- Crypto scams and how to avoid them
+- Passive income with crypto staking
+
+🎯 YOUR TASK: Generate 5 VIDEO IDEAS using the formulas above.
+
+REQUIREMENTS:
+✅ Title: 45-60 characters MAX (mobile optimized)
+✅ Include 1 emoji (🚨📈⚠️💰)
+✅ Create CURIOSITY GAP (don't reveal everything in title)
+✅ Use POWER WORDS: SHOCKING, WARNING, SECRET, EXPOSED, TRUTH, PROVEN, BREAKING
+✅ AVOID: Generic titles like "Bitcoin Analysis" or "Market Update"
+
+For each idea provide:
+- Title (with formula used)
+- Hook (first 3 seconds - MUST be SHOCKING)
+- Main point (one sentence)
+- Why it's viral (psychology trigger: fear/curiosity/greed/urgency)
+
+Then SELECT THE BEST ONE and return in JSON:
+
+{{
+    "best_idea": {{
+        "title": "Final viral title",
+        "hook_3sec": "First 3 seconds text (MUST stop the scroll)",
+        "description": "One sentence explanation",
+        "formula_used": "Name of formula (e.g., 'Fear + Urgency')",
+        "psychology_trigger": "fear/curiosity/controversy/greed/urgency",
+        "type": "{tipo}"
+    }},
+    "all_ideas": [
+        {{"title": "...", "hook_3sec": "...", "formula": "...", "viral_score": 9}},
+        ...
+    ]
+}}
+"""
+    url = "https://api.deepseek.com/v1/chat/completions"
+    headers = {"Authorization": f"Bearer {DEEPSEEK_API_KEY}", "Content-Type": "application/json"}
+    payload = {
+        "model": "deepseek-chat",
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.8,
+        "max_tokens": 1200,
+        "response_format": {"type": "json_object"}
+    }
+    
+    try:
+        r = requests.post(url, headers=headers, json=payload, timeout=90)
+        r.raise_for_status()
+        data = r.json()
+        content = data["choices"][0]["message"]["content"]
+        inicio = content.find("{")
+        fin = content.rfind("}")
+        json_str = content[inicio:fin+1]
+        return json.loads(json_str)
+    except Exception as e:
+        print(f"⚠️ Error generating ideas: {e}")
+        return None
+
+# ================================================================
+# 📝 GENERAR GUION CON HOOK DE 3 SEGUNDOS OPTIMIZADO
+# ================================================================
+def generar_guion_financiero(tipo, idea=None, fecha_actual=None):
+    if not fecha_actual:
+        fecha_actual = datetime.now(ZoneInfo("America/Mexico_City")).strftime("%B %d, %Y")
+
+    titulos_pub = cargar_titulos_publicados()["titulos"][-10:]
+    titulos_referencia = "\n".join([f"- {t}" for t in titulos_pub]) if titulos_pub else "None yet."
+
+    hook_sugerido = idea.get("hook_3sec", "") if idea else ""
+    tema_elegido = idea["title"] if idea else "Bitcoin/Fed/Gold Analysis"
+    
+    prompt = f"""
+You are a YouTube Shorts SCRIPTWRITER specializing in finance/crypto.
+
+ TOPIC: "{tema_elegido}"
+📌 HOOK: "{hook_sugerido}"
+📅 DATE: {fecha_actual}
+
+🎬 CRITICAL RULES:
+
+1️⃣ FIRST 3 SECONDS (MOST IMPORTANT - MUST STOP THE SCROLL):
+   - Use: SHOCKING statement + Visual urgency
+   - Examples:
+     * "STOP! Don't buy Bitcoin until you see this..."
+     * "WARNING: Your crypto is about to..."
+     * "This changes EVERYTHING..."
+     * "90% of traders lose money. Here's why..."
+
+2️⃣ STRUCTURE (Exactly 90-110 words):
+   [0-3s] HOOK: Shocking statement (10 words)
+   [3-10s] PROBLEM: Why this matters NOW (25 words)
+   [10-25s] DATA: Facts/numbers/proof (35 words)
+   [25-35s] SOLUTION: What to do (25 words)
+   [35-40s] CTA: "Follow for more" (5 words)
+
+3️⃣ IMAGE PROMPTS (One per segment - BE SPECIFIC):
+   Each prompt MUST match the segment content:
+   
+   For HOOK: "dramatic financial crisis scene, red emergency lights, urgency, neon yellow and red, cinematic, 8k"
+   For PROBLEM: "falling stock charts, red candles, panic, dark background with red glow"
+   For DATA: "professional financial data visualization, glowing charts, blue and gold neon"
+   For SOLUTION: "upward trending chart, green candles, success, gold accents"
+   For CTA: "professional finance background, subtle, dark blue with gold"
+
+4️⃣ THUMBNAIL PROMPT:
+   Create a prompt for a HIGH-CTR thumbnail:
+   - One dominant subject
+   - High contrast (yellow/red on black)
+   - Space for 3-5 words of text
+   - Example: "Bitcoin coin cracking in half, red lightning, dramatic lighting, black background, space for text on right side"
+
+5️⃣ HASHTAGS (4-6 specific to topic):
+   - Include main keyword
+   - Mix broad and specific
+   - Example for Bitcoin: "#Bitcoin #BTC #CryptoNews #BitcoinPrice #Crypto2024"
+
+6️ TITLE OPTIMIZATION:
+   - Keep 50-60 characters
+   - Use 1 emoji max
+   - Create curiosity gap
+   - Use power words
+
+🚫 TITLES ALREADY PUBLISHED (DO NOT REPEAT):
+{titulos_referencia}
+
+RETURN JSON:
+{{
+    "title": "Optimized title (50-60 chars with emoji)",
+    "alternative_title": "Second title for A/B testing",
+    "keywords": ["keyword1", "keyword2", "keyword3"],
+    "hook_description": "Hook for description (first 90 chars)",
+    "context_description": "One sentence context",
+    "source_story": "Data source (e.g., 'Federal Reserve data')",
+    "cover_words": "2-3 WORDS FOR THUMBNAIL (e.g., 'BITCOIN CRASH')",
+    "tags": "15-20 tags comma separated",
+    "dynamic_hashtags": "#Bitcoin #Crypto #BTC #CryptoNews",
+    "segments": [
+        {{
+            "block": "HOOK",
+            "text": "shocking statement (~10 words)",
+            "image_prompt": "dramatic crisis scene, red emergency lighting, neon yellow text space, cinematic 8k, vertical 9:16",
+            "duration": 3.0
+        }},
+        {{
+            "block": "PROBLEM", 
+            "text": "why it matters (~25 words)",
+            "image_prompt": "falling charts red candles panic, dark background with red glow, urgent, vertical 9:16",
+            "duration": 7.0
+        }},
+        {{
+            "block": "DATA",
+            "text": "facts and numbers (~35 words)",
+            "image_prompt": "professional financial data charts, glowing blue and gold neon lines, 8k hyperrealistic, vertical 9:16",
+            "duration": 15.0
+        }},
+        {{
+            "block": "SOLUTION",
+            "text": "what to do (~25 words)",
+            "image_prompt": "upward trending chart green candles success, gold accents on dark, optimistic, vertical 9:16",
+            "duration": 10.0
+        }},
+        {{
+            "block": "CLOSE",
+            "text": "CTA (~5 words)",
+            "image_prompt": "professional finance background dark blue subtle gold accents, vertical 9:16",
+            "duration": 5.0
+        }}
+    ],
+    "thumbnail_prompt": "Bitcoin crashing down with red lightning, dramatic crisis scene, black background with space for bold text on right, high contrast, YouTube thumbnail style, 16:9"
+}}
+"""
+    url = "https://api.deepseek.com/v1/chat/completions"
+    headers = {"Authorization": f"Bearer {DEEPSEEK_API_KEY}", "Content-Type": "application/json"}
+    payload = {
+        "model": "deepseek-chat",
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.7,
+        "max_tokens": 1200,
+        "response_format": {"type": "json_object"}
+    }
+
+    for intento in range(6):
+        try:
+            print(f"🔄 Attempt {intento+1}/6 generating script...")
+            r = requests.post(url, headers=headers, json=payload, timeout=90)
+            r.raise_for_status()
+            respuesta = r.json()["choices"][0]["message"]["content"].strip()
+            
+            respuesta = re.sub(r"```json\s*", "", respuesta)
+            respuesta = re.sub(r"```\s*", "", respuesta)
+            inicio = respuesta.find("{")
+            fin = respuesta.rfind("}")
+            if inicio != -1 and fin != -1:
+                json_str = respuesta[inicio:fin+1]
+                json_str = re.sub(r",\s*}", "}", json_str)
+                json_str = re.sub(r",\s*\]", "]", json_str)
+                data = json.loads(json_str, strict=False)
+            else:
+                raise ValueError("No JSON found")
+
+            if "segments" not in data or len(data["segments"]) != 5:
+                raise ValueError("Missing segments")
+            
+            for seg in data["segments"]:
+                if not seg.get("image_prompt") or len(seg["image_prompt"].split()) < 5:
+                    seg["image_prompt"] = f"cinematic financial scene about {tema_elegido[:40]}, neon lighting, hyperrealistic, 8k, no people, no text, vertical 9:16"
+
+            texto = ""
+            for seg in data["segments"]:
+                texto += f"[{seg['block']}] {seg['text']}\n"
+
+            palabras = len(re.findall(r'\w+', texto))
+            if palabras < 70 or palabras > 130:
+                if palabras > 130:
+                    data["segments"] = truncar_segmentos(data["segments"])
+                    texto = ""
+                    for seg in data["segments"]:
+                        texto += f"[{seg['block']}] {seg['text']}\n"
+                elif palabras < 70:
+                    data["segments"][-1]["text"] += " This is a quick financial insight. Follow for more."
+                    texto = ""
+                    for seg in data["segments"]:
+                        texto += f"[{seg['block']}] {seg['text']}\n"
+
+            titulo = data.get("title", "").strip()
+            titulo = re.sub(r'#\w+', '', titulo).strip()
+            if titulo_ya_publicado(titulo):
+                raise ValueError("Duplicate title")
+
+            tags_raw = data.get("tags", "")
+            tags_list = sanitizar_tags(tags_raw)
+            keywords = data.get("keywords", [])
+            for kw in keywords:
+                if kw.lower() not in [t.lower() for t in tags_list]:
+                    tags_list.append(kw.lower())
+            extras = ["finance", "investing", "economy", "bitcoin", "crypto", "trading", "education"]
+            for extra in extras:
+                if len(tags_list) < 20 and extra not in tags_list:
+                    tags_list.append(extra)
+            data["tags"] = ", ".join(tags_list[:20])
+
+            if "thumbnail_prompt" not in data or not data["thumbnail_prompt"]:
+                data["thumbnail_prompt"] = "clean professional financial chart, dark background, blue and gold colors, no people, no text, high contrast"
+
+            if "dynamic_hashtags" not in data:
+                data["dynamic_hashtags"] = ""
+
+            print(f"   ️ Title: {data['title']} ({len(data['title'])} chars)")
+            print(f"   📊 Words: {palabras}")
+            return data, tema_elegido, tipo
+            
+        except Exception as e:
+            print(f"❌ Attempt {intento+1}/6 failed: {e}")
+            if intento < 5:
+                time.sleep(10)
+
+    print("❌ ALL ATTEMPTS FAILED.")
+    sys.exit(1)
+
+def truncar_segmentos(segments):
+    total_palabras = sum(len(seg["text"].split()) for seg in segments)
+    if total_palabras <= 110:
+        return segments
+    objetivo = 110
+    factor = objetivo / total_palabras
+    nuevos = []
+    for seg in segments:
+        palabras = seg["text"].split()
+        nuevo_largo = max(3, int(len(palabras) * factor))
+        nuevas_palabras = palabras[:nuevo_largo]
+        nuevos.append({"block": seg["block"], "text": " ".join(nuevas_palabras), "image_prompt": seg.get("image_prompt", ""), "duration": seg.get("duration", 5.0)})
+    return nuevos
+
+# ================================================================
+# 🏷️ SANITIZAR HASHTAGS Y TAGS
 # ================================================================
 def sanitizar_hashtags(hashtags_str, max_tags=6):
-    """Limpia y formatea hashtags para YouTube/Rumble."""
     if not hashtags_str:
         return ""
     tags = hashtags_str.split()
@@ -152,8 +560,27 @@ def sanitizar_hashtags(hashtags_str, max_tags=6):
     cleaned = cleaned[:max_tags]
     return " ".join(cleaned)
 
+def sanitizar_tags(tags_str, max_chars=500):
+    if not tags_str:
+        return []
+    raw_tags = [t.strip() for t in tags_str.split(",") if t.strip()]
+    cleaned = []
+    for tag in raw_tags:
+        clean = re.sub(r'[^a-zA-Z0-9áéíóúüñÁÉÍÓÚÜÑ\s\-]', '', tag).strip()
+        if clean and len(clean) > 1:
+            cleaned.append(clean)
+    cleaned = list(dict.fromkeys(cleaned))
+    result = ""
+    for tag in cleaned:
+        test = result + "," + tag if result else tag
+        if len(test) <= max_chars:
+            result = test
+        else:
+            break
+    return result.split(",") if result else []
+
 # ================================================================
-# MÚSICA CORPORATE
+#  MÚSICA CORPORATE
 # ================================================================
 FONDOS_DISPONIBLES = [
     "The Ascent.mp3",
@@ -176,13 +603,14 @@ def seleccionar_fondo_disponible(estado):
     ultimo_fondo = estado.get("ultimo_fondo")
     if ultimo_fondo and ultimo_fondo in fondos_disponibles:
         fondos_disponibles.remove(ultimo_fondo)
-    seleccionada = random.choice(fondos_disponibles) if fondos_disponibles else random.choice(FONDOS_DISPONIBLES)
-    estado["ultimo_fondo"] = seleccionada
-    print(f"🎵 Selected music: {os.path.basename(seleccionada)}")
+    seleccionada = random.choice(fondos_disponibles) if fondos_disponibles else None
+    if seleccionada:
+        estado["ultimo_fondo"] = seleccionada
+        print(f"🎵 Selected music: {os.path.basename(seleccionada)}")
     return seleccionada
 
 # ================================================================
-# FUNCIONES DE ESTADO (con soporte para revisar también los archivos en español)
+# 📂 FUNCIONES DE ESTADO
 # ================================================================
 def cargar_estado():
     try:
@@ -295,65 +723,142 @@ def tema_ya_publicado(tema, dias=30):
     hoy = datetime.now(ZoneInfo("America/Mexico_City")).date()
     for t in temas:
         if t["tema"].lower() == tema.lower():
-            fecha_tema = datetime.strptime(t["fecha"], "%Y-%m-%d").date()
-            if (hoy - fecha_tema).days < dias:
-                return True
+            try:
+                fecha_tema = datetime.strptime(t["fecha"], "%Y-%m-%d").date()
+                if (hoy - fecha_tema).days < dias:
+                    return True
+            except:
+                continue
     return False
 
 # ================================================================
-# TREND-JACKING CON NOTICIAS DEL DÍA (EN INGLÉS)
+# 🖼️ GENERAR IMAGEN VERTICAL (PEXELS API - OPTIMIZADO)
 # ================================================================
-def obtener_noticia_trending():
-    if not NEWSAPI_KEY:
-        return None
-    try:
-        url = "https://newsapi.org/v2/top-headlines"
-        params = {
-            "category": "business",
-            "language": "en",
-            "apiKey": NEWSAPI_KEY,
-            "pageSize": 5,
-            "country": "us"
-        }
-        r = requests.get(url, params=params, timeout=10)
-        if r.status_code == 200:
-            data = r.json()
-            if data.get("articles"):
-                for article in data["articles"]:
-                    title = article.get("title", "")
-                    keywords = ["bitcoin", "crypto", "gold", "etf", "inflation", "fed", "reserve", "stock", "market", "interest", "rates", "dollar", "economy"]
-                    if any(word in title.lower() for word in keywords):
-                        return title
-                return data["articles"][0].get("title", "")
-        return None
-    except Exception as e:
-        print(f"⚠️ Error getting news: {e}")
-        return None
-
-# ================================================================
-# SANITIZAR TAGS MEJORADO
-# ================================================================
-def sanitizar_tags(tags_str, max_chars=500):
-    if not tags_str:
-        return []
-    raw_tags = [t.strip() for t in tags_str.split(",") if t.strip()]
-    cleaned = []
-    for tag in raw_tags:
-        clean = re.sub(r'[^a-zA-Z0-9áéíóúüñÁÉÍÓÚÜÑ\s\-]', '', tag).strip()
-        if clean and len(clean) > 1:
-            cleaned.append(clean)
-    cleaned = list(dict.fromkeys(cleaned))
-    result = ""
-    for tag in cleaned:
-        test = result + "," + tag if result else tag
-        if len(test) <= max_chars:
-            result = test
-        else:
+def generar_imagen_vertical(prompt, tema="", intentos=3):
+    """
+    MEJORADO: Keywords específicas que funcionan en Pexels
+    """
+    
+    keyword_map = {
+        "bitcoin": "bitcoin cryptocurrency trading",
+        "crash": "stock market crash red chart",
+        "gold": "gold bars wealth luxury",
+        "fed": "federal reserve bank building",
+        "crypto": "cryptocurrency blockchain technology",
+        "trading": "trading charts candlestick graph",
+        "money": "money cash dollars finance",
+        "economy": "economy finance business stock market",
+        "investment": "investment portfolio finance growth",
+        "panic": "stress business crisis emergency",
+        "success": "success growth profit upward chart",
+        "warning": "warning alert danger red emergency",
+        "chart": "financial charts graph trading",
+        "market": "stock market trading floor",
+    }
+    
+    search_query = ""
+    prompt_lower = prompt.lower()
+    
+    for key, value in keyword_map.items():
+        if key in prompt_lower:
+            search_query = value
             break
-    return result.split(",") if result else []
+    
+    if not search_query:
+        search_query = "finance business stock market charts"
+    
+    fallback_queries = [
+        search_query,
+        "abstract dark finance background",
+        "stock market trading charts",
+        "cryptocurrency bitcoin technology",
+        "business finance economy",
+    ]
+    
+    for intento in range(intentos):
+        current_query = fallback_queries[intento % len(fallback_queries)]
+        
+        url = f"https://api.pexels.com/v1/search?query={current_query.replace(' ', '+')}&per_page=5&orientation=portrait"
+        headers = {"Authorization": PEXELS_API_KEY}
+        
+        try:
+            print(f"   🖼️ Pexels search: '{current_query}' (attempt {intento+1})")
+            r = requests.get(url, headers=headers, timeout=30)
+            
+            if r.status_code == 200:
+                data = r.json()
+                if data.get("photos") and len(data["photos"]) > 0:
+                    photos = data["photos"][:5]
+                    
+                    best_photo = None
+                    best_score = 0
+                    
+                    for photo in photos:
+                        score = 0
+                        if photo.get("src", {}).get("portrait"):
+                            score += 10
+                        if photo.get("avg_color") and photo["avg_color"].lower() in ["#1a1a1a", "#2d2d2d", "#000000", "#1c1c1c"]:
+                            score += 5
+                        if score > best_score:
+                            best_score = score
+                            best_photo = photo
+                    
+                    if best_photo:
+                        img_url = best_photo["src"].get("portrait") or best_photo["src"].get("original")
+                        print(f"   ✅ Found vertical image: {best_photo.get('photographer', 'Unknown')}")
+                        return img_url
+                        
+        except Exception as e:
+            print(f"   ⚠️ Error: {e}")
+            
+        if intento < intentos - 1:
+            time.sleep(3)
+    
+    return None
+
+def generar_imagen_horizontal(prompt, tema="", intentos=3):
+    search_query = tema if tema else prompt
+    
+    search_query = re.sub(r'[^a-zA-Z0-9\s]', '', search_query).strip()
+    if len(search_query) > 50:
+        search_query = search_query[:50]
+    if not search_query:
+        search_query = "finance business technology"
+
+    fallback_queries = [
+        search_query,
+        "finance business technology",
+        "abstract dark background",
+        "stock market charts",
+    ]
+    
+    for intento in range(intentos):
+        current_query = fallback_queries[intento % len(fallback_queries)]
+        url = f"https://api.pexels.com/v1/search?query={current_query.replace(' ', '+')}&per_page=1&orientation=landscape"
+        headers = {"Authorization": PEXELS_API_KEY}
+        
+        try:
+            print(f"   🖼️ Pexels horizontal: '{current_query}' (attempt {intento+1})")
+            r = requests.get(url, headers=headers, timeout=30)
+            if r.status_code == 200:
+                data = r.json()
+                if data.get("photos") and len(data["photos"]) > 0:
+                    photo = data["photos"][0]
+                    img_url = photo["src"].get("landscape") or photo["src"].get("original")
+                    print(f"   ✅ Horizontal image found.")
+                    return img_url
+            else:
+                print(f"   ⚠️ Pexels API error {r.status_code}")
+        except Exception as e:
+            print(f"   ⚠️ Connection error: {e}")
+            
+        if intento < intentos - 1:
+            time.sleep(3)
+            
+    return None
 
 # ================================================================
-# GENERAR FONDO SÓLIDO (fallback)
+# 🎨 GENERAR FONDO SÓLIDO
 # ================================================================
 def generar_fondo_solido(color=(20, 20, 50), ancho=1080, alto=1920):
     img = Image.new('RGB', (ancho, alto), color)
@@ -361,497 +866,8 @@ def generar_fondo_solido(color=(20, 20, 50), ancho=1080, alto=1920):
     img.save(path)
     return path
 
-def truncar_texto(texto):
-    palabras = texto.split()
-    if len(palabras) <= 110:
-        return texto
-    truncado = ' '.join(palabras[:110])
-    if not truncado.endswith(('.', '!', '?')):
-        truncado += '.'
-    return truncado
-
 # ================================================================
-# GENERACIÓN DE IDEAS (CON 25 FORMATOS)
-# ================================================================
-def generar_idea_video(tipo, fecha_actual):
-    prompt = f"""
-You are a CONTENT STRATEGIST for YouTube Shorts in the finance/crypto niche.
-
-📅 CURRENT DATE: {fecha_actual}
-⚠️ IMPORTANT: DO NOT use past dates like 2020-2024. Use current date or "today".
-
-🎯 YOUR TASK: Generate 5 diverse SHORT VIDEO IDEAS (30-60 seconds) covering different ANGLES within finance/crypto.
-
-🎯 AVAILABLE FORMATS (choose a DIFFERENT one for each idea):
-1. NEWS BREAKDOWN: Explain a recent financial news event (e.g., Fed rate decision, inflation report, Bitcoin ETF flow).
-2. EDUCATIONAL CONCEPT: Teach a basic financial concept (e.g., "What is a bear market?", "How does staking work?").
-3. PSYCHOLOGY & BEHAVIOR: Analyze investor psychology (e.g., "Why do we panic sell?", "How to avoid FOMO").
-4. MARKET ANALYSIS: Give a quick market update (e.g., "Bitcoin dominance rises", "Altcoin season incoming").
-5. HISTORICAL LESSON: Share a lesson from a past financial event (e.g., "What happened in 2008?", "Mt. Gox collapse").
-6. COMPARISON: Compare two assets or strategies (e.g., "Bitcoin vs. Gold", "Active vs. Passive investing").
-7. TIP & STRATEGY: Provide a practical tip (e.g., "How to secure your crypto", "How to read a candlestick chart").
-8. MYTH BUSTING: Debunk a common financial myth (e.g., "Is gold always a safe haven?").
-9. EXPERT OPINION: Summarize an expert's view on a topic (e.g., "What does Cathie Wood say about Bitcoin?").
-10. DATA HIGHLIGHT: Show a surprising data point (e.g., "70% of retail traders lose money").
-11. INTERVIEW SUMMARY: Summarize a key interview or statement from a CEO or influencer.
-12. COUNTRY ANALYSIS: Analyze crypto adoption or regulation in a specific country.
-13. BLOCKCHAIN TECHNOLOGY: Explain a technical concept (e.g., "What is Layer 2?", "Proof of Stake").
-14. ADVANCED TRADING: Share a trading strategy (e.g., "How to use stop-loss orders").
-15. REGULATION UPDATE: Discuss new laws or regulations affecting crypto/finance.
-16. SUSTAINABILITY & MINING: Discuss the environmental impact of crypto mining and solutions.
-17. SUCCESS STORY: Tell a story of a successful investor or trader.
-18. FAILURE STORY: Tell a story of a loss or mistake and the lesson learned.
-19. PREDICTION: Make a prediction about future trends or prices.
-20. TECHNICAL ANALYSIS: Explain a chart pattern (e.g., "Cup and handle", "Head and shoulders").
-21. EXCHANGE COMPARISON: Compare two popular exchanges (e.g., "Binance vs. Coinbase").
-22. SECURITY BEST PRACTICES: Give security tips (e.g., "How to avoid phishing scams").
-23. DEFI DEEP DIVE: Explain a DeFi protocol (e.g., "What is Uniswap?").
-24. NFT & METAVERSE: Discuss the impact of NFTs or the metaverse on finance.
-25. GEOPOLITICAL IMPACT: Explain how global events affect markets.
-
-🎯 PREVENT REPETITION:
-- DO NOT use the same format twice in the 5 ideas.
-- DO NOT always use "$100" or "30 days" – vary amounts and timeframes.
-- AVOID sensationalist titles like "turned $X into $Y" – prefer informative hooks.
-- COVER different topics: macroeconomics, education, psychology, technology, regulation, etc.
-
-CONTENT TYPE: {tipo} (news, educational, scam, psychology, analysis)
-
-Your task is to generate 5 VIDEO IDEAS following the formats above.
-
-For each idea, write:
-- Title (50-60 characters, with emoji, generating CURIOSITY but realistic).
-- 1-2 line description explaining the topic.
-- Format used (from the list above).
-- Curiosity level (1-10).
-
-Then CHOOSE THE BEST IDEA (the one with the most curiosity and the most DIFFERENT from previous videos) and return it.
-
-RESPONSE IN JSON:
-{{
-    "best_idea": {{
-        "title": "Final title with curiosity (no past dates)",
-        "description": "Idea description",
-        "format": "Name of the format used (e.g., 'Educational Concept')",
-        "type": "{tipo}"
-    }},
-    "ideas_generated": [
-        {{"title": "...", "description": "...", "format": "...", "curiosity": 8}},
-        ...
-    ]
-}}
-"""
-    url = "https://api.deepseek.com/v1/chat/completions"
-    headers = {"Authorization": f"Bearer {DEEPSEEK_API_KEY}", "Content-Type": "application/json"}
-    payload = {
-        "model": "deepseek-chat",
-        "messages": [{"role": "user", "content": prompt}],
-        "temperature": 0.8,
-        "max_tokens": 1000,
-        "response_format": {"type": "json_object"}
-    }
-    try:
-        r = requests.post(url, headers=headers, json=payload, timeout=90)
-        r.raise_for_status()
-        data = r.json()
-        content = data["choices"][0]["message"]["content"]
-        inicio = content.find("{")
-        fin = content.rfind("}")
-        json_str = content[inicio:fin+1]
-        return json.loads(json_str)
-    except Exception as e:
-        print(f"⚠️ Error generating ideas: {e}")
-        return None
-
-# ================================================================
-# GENERAR GUION SHORT (CON PROMPTS DE IMAGEN POR SEGMENTO Y HASHTAGS DINÁMICOS)
-# ================================================================
-def generar_guion_financiero(tipo, idea=None, fecha_actual=None):
-    if not fecha_actual:
-        fecha_actual = datetime.now(ZoneInfo("America/Mexico_City")).strftime("%B %d, %Y")
-
-    titulos_pub = cargar_titulos_publicados()["titulos"][-10:]
-    titulos_referencia = "\n".join([f"- {t}" for t in titulos_pub]) if titulos_pub else "None yet."
-
-    TEMAS_REALES = [
-        "Federal Reserve interest rate decision and its impact on crypto",
-        "Inflation report: CPI data exceeds expectations",
-        "Bitcoin ETF inflows reach record high",
-        "US dollar strength and its effect on Bitcoin",
-        "Oil prices surge: implications for global markets",
-        "China's economy slows down: impact on crypto",
-        "European Central Bank rate cut expectations",
-        "Global recession fears: are we heading for a downturn?",
-        "US jobs report beats estimates: what it means for markets",
-        "Japan's interest rate policy and crypto markets",
-        "What is a bear market and how to survive it",
-        "How to read a candlestick chart",
-        "The difference between market cap and price",
-        "What is a stablecoin and how does it work",
-        "How to set up a crypto wallet safely",
-        "What is staking and how does it generate yield?",
-        "Understanding blockchain technology in 60 seconds",
-        "What is a smart contract?",
-        "What is an ETF and how does it work?",
-        "What is dollar-cost averaging?",
-        "Why do most traders lose money? Psychology explained",
-        "How to overcome FOMO in crypto",
-        "The importance of risk management",
-        "Why panic selling is usually a mistake",
-        "How to stay calm during market crashes",
-        "What is the 'fear and greed index' and why it matters?",
-        "The psychology of market cycles",
-        "Bitcoin dominance: what it means for altcoins",
-        "Ethereum's transition to proof-of-stake: explained",
-        "Solana vs. Ethereum: which is better?",
-        "Layer 2 scaling solutions explained",
-        "What is DeFi and why is it important?",
-        "RWA tokenization: the next big trend",
-        "Altcoin season: what it is and when it happens",
-        "Bitcoin halving: what it is and why it matters",
-        "What we learned from the FTX collapse",
-        "The 2008 financial crisis and Bitcoin's origin",
-        "Mt. Gox hack: lessons for investors",
-        "The 2020 COVID crash and recovery",
-        "How the 2022 bear market shaped crypto",
-        "The 2017 bull run and its aftermath",
-        "How to use dollar-cost averaging",
-        "Why you should never share your private keys",
-        "How to spot a crypto scam",
-        "How to choose a reliable exchange",
-        "How to secure your crypto with a hardware wallet",
-        "How to research a cryptocurrency before buying",
-        "How to create a diversified crypto portfolio",
-        "Is Bitcoin a bubble? Debunking the myth",
-        "Is gold always a safe haven?",
-        "Can you get rich overnight with crypto? The truth",
-        "Are all altcoins scams? The reality",
-        "Is crypto dead after a crash?",
-        "70% of retail traders lose money: the data",
-        "Bitcoin's energy consumption: facts vs. fiction",
-        "How much crypto is held by institutions?",
-        "The average crypto investor's portfolio composition",
-        "What is a rollup? Layer 2 explained",
-        "Zero-knowledge proofs: what they are and why they matter",
-        "The future of blockchain interoperability",
-        "Crypto regulation in the US: what's changing",
-        "Europe's MiCA regulation explained",
-        "How regulation affects crypto prices",
-        "What is Uniswap? DeFi explained",
-        "Yield farming: what it is and how it works",
-        "What are DAOs? Decentralized organizations explained",
-        "Web3: the future of the internet?"
-    ]
-
-    if not idea:
-        print("💡 Generating idea with varied format...")
-        idea_data = generar_idea_video(tipo, fecha_actual)
-        if idea_data and "best_idea" in idea_data:
-            idea = idea_data["best_idea"]
-            print(f"   ✅ Selected idea: {idea['title']}")
-            print(f"   📌 Format: {idea.get('format', 'general')}")
-        else:
-            print("⚠️ No idea generated, using fallback topic.")
-            tema_aleatorio = random.choice(TEMAS_REALES)
-            idea = {"title": tema_aleatorio, "restriction": "Educational content", "format": "Educational Concept"}
-
-    tema_elegido = idea["title"]
-    restriccion = idea.get("restriction", "Financial education")
-    formato = idea.get("format", "Educational Concept")
-
-    prompt = f"""
-You are a FINANCE EXPERT and EDUCATIONAL CONTENT CREATOR for YouTube SHORTS.
-
-📌 VIDEO IDEA: "{tema_elegido}"
-📌 FORMAT TYPE: {formato}
-📌 CONTENT TYPE: {tipo.upper()}
-📅 CURRENT DATE: {fecha_actual}
-
-⚠️ DATE RULE: DO NOT use past dates (2020-2024). Use current year only.
-
-🎯 CONTENT RULES:
-1. Write EXACTLY between 90 and 110 words.
-2. Structure: HOOK → DATA → TAKEAWAY → CLOSE.
-   - [HOOK] Present the topic with a curiosity gap (e.g., "Did you know that...", "Here's why...").
-   - [DATA] Provide factual data, explanation, or context.
-   - [TAKEAWAY] Give a clear takeaway or lesson.
-   - [CLOSE] End with a CTA (e.g., "Follow for more insights").
-3. Tone: Educational, informative, and engaging – NOT sensationalist.
-4. Numbers written with LETTERS (not "400,500").
-
-🎯 TITLE OPTIMIZATION (IMPORTANT):
-- Make the title more clickable but NOT sensationalist.
-- Add a curiosity gap (e.g., "Why..." instead of "This is why").
-- Use power words like "The Truth About", "What You Need to Know".
-- Keep the title between 50-60 characters.
-- Use 1 emoji maximum.
-
-🎯 SEO RULES:
-1. KEYWORDS: 2-3 high-volume terms.
-2. TAGS: 15-20 tags (no dates).
-3. COVER WORDS: 2-3 impactful words (e.g., "BITCOIN", "CRASH", "EXPLAINED").
-
-🎯 IMAGE PROMPTS (CRITICAL - MUST BE SEGMENT-SPECIFIC):
-For EACH segment, you MUST generate a DETAILED image prompt that VISUALLY REPRESENTS the content of that specific segment's text.
-
-RULES:
-1. Each segment MUST have a UNIQUE image prompt based on its own text content.
-2. If the segment talks about "panic selling", show panic selling visuals (red charts, fear).
-3. If the segment talks about "Bitcoin halving", show Bitcoin halving visuals.
-4. If the segment talks about "Fed rate hike", show a central bank or interest rate chart.
-5. If the segment talks about "gold", show gold bars or coins.
-6. DO NOT repeat the same prompt across segments.
-7. Each prompt must be descriptive (at least 8 words).
-8. Style: hyperrealistic, cinematic, neon, 8k.
-9. PROHIBITED: people, faces, text, numbers, letters, watermarks, black boxes.
-
-🎯 HASHTAGS RULES (CRITICAL - IN ENGLISH):
-- Generate 4-6 hashtags that are SPECIFIC to the Shorts topic.
-- Include the main keyword(s) of the video.
-- Each hashtag must start with "#" and have no spaces.
-- DO NOT use generic hashtags like #shorts or #video.
-- DO NOT use #Finance or #Shorts as dynamic (they are added automatically).
-- Separate hashtags with spaces.
-- Example for Bitcoin halving: "#BitcoinHalving #BTC #CryptoHalving #BitcoinNews"
-
-🎯 THUMBNAIL DESIGN:
-Create a prompt in ENGLISH for the thumbnail background. It should represent the OVERALL topic.
-- Style: "crypto YouTube thumbnail", neon, high contrast, cinematic, hyperrealistic.
-- PROHIBITED: people, faces, text.
-- Size: 1280x720 (horizontal).
-
-🚫 TITLES ALREADY PUBLISHED (DO NOT REPEAT):
-{titulos_referencia}
-
-📤 RESPONSE: Return STRICTLY this JSON:
-{{
-    "title": "Optimized title (50-60 chars, with emoji and curiosity gap, no past dates)",
-    "alternative_title": "Second title for A/B testing",
-    "keywords": ["keyword1", "keyword2", "keyword3"],
-    "hook_description": "Hook for description (max 90 chars)",
-    "context_description": "Context in one sentence",
-    "source_story": "Story source (e.g., 'Federal Reserve data' or 'Personal experience')",
-    "cover_words": "2-3 words for thumbnail",
-    "tags": "15-20 tags separated by commas (no dates)",
-    "dynamic_hashtags": "4-6 hashtags specific to the topic (e.g., '#BitcoinHalving #BTC #CryptoHalving')",
-    "segments": [
-        {{"block": "HOOK", "text": "text (~10-15 words)", "image_prompt": "Detailed prompt for THIS specific segment's content"}},
-        {{"block": "DATA", "text": "text (~20-30 words)", "image_prompt": "Detailed prompt for THIS specific segment's content"}},
-        {{"block": "TAKEAWAY", "text": "text (~20-30 words)", "image_prompt": "Detailed prompt for THIS specific segment's content"}},
-        {{"block": "CLOSE", "text": "text (~15-20 words)", "image_prompt": "Detailed prompt for THIS specific segment's content"}}
-    ],
-    "thumbnail_prompt": "Prompt in English for the thumbnail background (NO text, NO people, 1280x720)"
-}}
-"""
-    url = "https://api.deepseek.com/v1/chat/completions"
-    headers = {"Authorization": f"Bearer {DEEPSEEK_API_KEY}", "Content-Type": "application/json"}
-    payload = {
-        "model": "deepseek-chat",
-        "messages": [{"role": "user", "content": prompt}],
-        "temperature": 0.7,
-        "max_tokens": 1200,
-        "response_format": {"type": "json_object"}
-    }
-
-    for intento in range(6):
-        try:
-            print(f"🔄 Attempt {intento+1}/6 generating script...")
-            r = requests.post(url, headers=headers, json=payload, timeout=90)
-            r.raise_for_status()
-            respuesta = r.json()["choices"][0]["message"]["content"].strip()
-            
-            respuesta = re.sub(r"```json\s*", "", respuesta)
-            respuesta = re.sub(r"```\s*", "", respuesta)
-            inicio = respuesta.find("{")
-            fin = respuesta.rfind("}")
-            if inicio != -1 and fin != -1:
-                json_str = respuesta[inicio:fin+1]
-                json_str = re.sub(r",\s*}", "}", json_str)
-                json_str = re.sub(r",\s*\]", "]", json_str)
-                data = json.loads(json_str, strict=False)
-            else:
-                raise ValueError("No JSON found")
-
-            # Verificar que hay segmentos con image_prompt
-            if "segments" not in data or len(data["segments"]) != 4:
-                raise ValueError("Missing segments")
-            
-            for seg in data["segments"]:
-                if not seg.get("image_prompt") or len(seg["image_prompt"].split()) < 5:
-                    seg["image_prompt"] = f"cinematic financial scene about {tema_elegido[:40]}, neon lighting, hyperrealistic, 8k, no people, no text"
-
-            # Reconstruir full_text desde segments (para validación y logs)
-            texto = ""
-            for seg in data["segments"]:
-                texto += f"[{seg['block']}] {seg['text']}\n"
-
-            # Validar longitud del texto completo
-            palabras = len(re.findall(r'\w+', texto))
-            if palabras < 70 or palabras > 130:
-                if palabras > 130:
-                    data["segments"] = truncar_segmentos(data["segments"])
-                    texto = ""
-                    for seg in data["segments"]:
-                        texto += f"[{seg['block']}] {seg['text']}\n"
-                elif palabras < 70:
-                    # Añadir algo al último segmento para cumplir
-                    data["segments"][-1]["text"] += " This is a quick financial insight. Follow for more."
-                    texto = ""
-                    for seg in data["segments"]:
-                        texto += f"[{seg['block']}] {seg['text']}\n"
-
-            # Verificar duplicado
-            titulo = data.get("title", "").strip()
-            titulo = re.sub(r'#\w+', '', titulo).strip()
-            if titulo_ya_publicado(titulo):
-                raise ValueError("Duplicate title")
-
-            # Tags
-            tags_raw = data.get("tags", "")
-            tags_list = sanitizar_tags(tags_raw)
-            keywords = data.get("keywords", [])
-            for kw in keywords:
-                if kw.lower() not in [t.lower() for t in tags_list]:
-                    tags_list.append(kw.lower())
-            extras = ["finance", "investing", "economy", "bitcoin", "crypto", "trading", "education"]
-            for extra in extras:
-                if len(tags_list) < 20 and extra not in tags_list:
-                    tags_list.append(extra)
-            data["tags"] = ", ".join(tags_list[:20])
-
-            if "thumbnail_prompt" not in data or not data["thumbnail_prompt"]:
-                data["thumbnail_prompt"] = "clean professional financial chart, dark background, blue and gold colors, no people, no text, high contrast"
-
-            if "dynamic_hashtags" not in data:
-                data["dynamic_hashtags"] = ""
-
-            print(f"   🏷️ Title: {data['title']} ({len(data['title'])} chars)")
-            print(f"   📊 Words: {palabras}")
-            return data, tema_elegido, restriccion
-            
-        except Exception as e:
-            print(f"❌ Attempt {intento+1}/6 failed: {e}")
-            if intento < 5:
-                time.sleep(10)
-
-    print("❌ ALL ATTEMPTS FAILED.")
-    sys.exit(1)
-
-def truncar_segmentos(segments):
-    """Trunca el texto de los segmentos para mantener el total dentro del límite."""
-    total_palabras = sum(len(seg["text"].split()) for seg in segments)
-    if total_palabras <= 110:
-        return segments
-    # Reducir proporcionalmente cada segmento
-    objetivo = 110
-    factor = objetivo / total_palabras
-    nuevos = []
-    for seg in segments:
-        palabras = seg["text"].split()
-        nuevo_largo = max(3, int(len(palabras) * factor))
-        nuevas_palabras = palabras[:nuevo_largo]
-        nuevos.append({"block": seg["block"], "text": " ".join(nuevas_palabras), "image_prompt": seg.get("image_prompt", "")})
-    return nuevos
-
-# ================================================================
-# GENERAR IMAGEN VERTICAL (PEXELS API - PORTRAIT)
-# ================================================================
-def generar_imagen_vertical(prompt, tema="", intentos=3):
-    # Pexels API usa consultas de búsqueda, no prompts generativos detallados.
-    search_query = tema if tema else prompt
-    
-    # Limpiar consulta: mantener solo letras y espacios, máx 50 caracteres
-    search_query = re.sub(r'[^a-zA-Z0-9\s]', '', search_query).strip()
-    if len(search_query) > 50:
-        search_query = search_query[:50]
-    if not search_query:
-        search_query = "finance business technology"
-
-    # Consultas de respaldo si la primera falla
-    fallback_queries = [
-        search_query,
-        "finance business technology",
-        "abstract dark background",
-        "stock market charts"
-    ]
-    
-    for intento in range(intentos):
-        current_query = fallback_queries[intento % len(fallback_queries)]
-        # Usamos orientation=portrait para obtener imágenes verticales (9:16)
-        url = f"https://api.pexels.com/v1/search?query={current_query.replace(' ', '+')}&per_page=1&orientation=portrait"
-        headers = {"Authorization": PEXELS_API_KEY}
-        
-        try:
-            print(f"   🖼️ Buscando en Pexels (vertical): '{current_query}' (intento {intento+1}/{intentos})...")
-            r = requests.get(url, headers=headers, timeout=30)
-            if r.status_code == 200:
-                data = r.json()
-                if data.get("photos") and len(data["photos"]) > 0:
-                    photo = data["photos"][0]
-                    # Usar tamaño 'portrait' u 'original'
-                    img_url = photo["src"].get("portrait") or photo["src"].get("original")
-                    print(f"   ✅ Imagen vertical encontrada exitosamente en Pexels.")
-                    return img_url
-            else:
-                print(f"   ⚠️ Error de API Pexels {r.status_code} - {r.text[:200]}")
-        except Exception as e:
-            print(f"   ⚠️ Error de conexión: {e}")
-            
-        if intento < intentos - 1:
-            print("   ⏳ Esperando 5 segundos antes de reintentar...")
-            time.sleep(5)
-            
-    return None
-
-# ================================================================
-# GENERAR IMAGEN HORIZONTAL PARA MINIATURA (PEXELS API - LANDSCAPE)
-# ================================================================
-def generar_imagen_horizontal(prompt, tema="", intentos=3):
-    # Pexels API usa consultas de búsqueda.
-    search_query = tema if tema else prompt
-    
-    search_query = re.sub(r'[^a-zA-Z0-9\s]', '', search_query).strip()
-    if len(search_query) > 50:
-        search_query = search_query[:50]
-    if not search_query:
-        search_query = "finance business technology"
-
-    fallback_queries = [
-        search_query,
-        "finance business technology",
-        "abstract dark background",
-        "stock market charts"
-    ]
-    
-    for intento in range(intentos):
-        current_query = fallback_queries[intento % len(fallback_queries)]
-        # Usamos orientation=landscape para miniaturas
-        url = f"https://api.pexels.com/v1/search?query={current_query.replace(' ', '+')}&per_page=1&orientation=landscape"
-        headers = {"Authorization": PEXELS_API_KEY}
-        
-        try:
-            print(f"   🖼️ Buscando en Pexels (horizontal): '{current_query}' (intento {intento+1}/{intentos})...")
-            r = requests.get(url, headers=headers, timeout=30)
-            if r.status_code == 200:
-                data = r.json()
-                if data.get("photos") and len(data["photos"]) > 0:
-                    photo = data["photos"][0]
-                    img_url = photo["src"].get("landscape") or photo["src"].get("original")
-                    print(f"   ✅ Imagen horizontal encontrada exitosamente en Pexels.")
-                    return img_url
-            else:
-                print(f"   ⚠️ Error de API Pexels {r.status_code} - {r.text[:200]}")
-        except Exception as e:
-            print(f"   ⚠️ Error de conexión: {e}")
-            
-        if intento < intentos - 1:
-            print("   ⏳ Esperando 5 segundos antes de reintentar...")
-            time.sleep(5)
-            
-    return None
-
-# ================================================================
-# GENERAR AUDIO (en inglés)
+# 🎙️ GENERAR AUDIO
 # ================================================================
 def generar_audio(texto, index, intentos_por_voz=2):
     global CONFIG_VOZ_ACTUAL
@@ -880,20 +896,20 @@ def generar_audio(texto, index, intentos_por_voz=2):
     return None
 
 # ================================================================
-# GENERAR RECURSOS POR SEGMENTO (USANDO PROMPTS DE DEEPSEEK)
+# 🎬 GENERAR RECURSOS POR SEGMENTO
 # ================================================================
-def generar_recursos_por_segmento(segmentos, segments_data, paleta_video, titulo, tema="", intentos_imagen=3):
+def generar_recursos_por_segmento(segmentos_data, paleta_video, titulo, tema="", intentos_imagen=3):
     recursos = []
-    total = len(segmentos)
+    total = len(segmentos_data)
     last_successful_url = None
 
-    for idx, seg_text in enumerate(segmentos):
-        print(f"  🎬 Segment {idx+1}/{total} ({len(seg_text.split())} words)")
+    for idx, seg in enumerate(segmentos_data):
+        seg_text = seg["text"]
+        prompt_deepseek = seg.get("image_prompt", "")
+        bloque = seg.get("block", "")
         
-        # Obtener el prompt de imagen generado por DeepSeek para este segmento
-        prompt_deepseek = segments_data[idx].get("image_prompt", "")
+        print(f"  🎬 Segment {idx+1}/{total} - {bloque} ({len(seg_text.split())} words)")
         
-        # Enriquecerlo con título, paleta y composición
         prompt_img = construir_prompt_segmento(titulo, prompt_deepseek, idx, paleta_video)
         
         print(f"    📝 Prompt: {prompt_img[:100]}...")
@@ -907,7 +923,6 @@ def generar_recursos_por_segmento(segmentos, segments_data, paleta_video, titulo
                 break
             time.sleep(5)
         
-        # REUTILIZACIÓN DE IMAGEN ANTERIOR SI FALLA
         if not img_url:
             if last_successful_url:
                 print(f"    🔄 Reusing previous image")
@@ -937,13 +952,14 @@ def generar_recursos_por_segmento(segmentos, segments_data, paleta_video, titulo
         try:
             dur = AudioFileClip(audio_path).duration
         except:
-            dur = 8.0
+            dur = seg.get("duration", 8.0)
         
         recursos.append({
             "imagen_url": img_url,
             "audio_path": audio_path,
             "duracion": dur,
-            "texto": seg_text
+            "texto": seg_text,
+            "block": bloque
         })
         
         if idx < total - 1:
@@ -952,8 +968,37 @@ def generar_recursos_por_segmento(segmentos, segments_data, paleta_video, titulo
     
     return recursos
 
+def construir_prompt_segmento(titulo, prompt_deepseek, idx_bloque, paleta):
+    if prompt_deepseek and len(prompt_deepseek.split()) > 5:
+        base_prompt = prompt_deepseek
+    else:
+        sujeto = detectar_sujeto_visual(titulo)
+        composicion = COMPOSICIONES_BLOQUE[idx_bloque % len(COMPOSICIONES_BLOQUE)]
+        base_prompt = f"{sujeto}, {composicion}"
+    
+    return (
+        f"{base_prompt}, color palette of {paleta}, "
+        "cinematic financial documentary style, hyperrealistic, 8k resolution, "
+        "dramatic lighting, high contrast, sharp focus, "
+        "no people, no faces, no hands, no text, no letters, no numbers, no logos, "
+        "no watermark, no black box, no rectangle overlay, vertical 9:16"
+    )
+
+def construir_prompt_miniatura(titulo, prompt_deepseek, paleta):
+    if prompt_deepseek and len(prompt_deepseek.split()) > 5:
+        base_prompt = prompt_deepseek
+    else:
+        sujeto = detectar_sujeto_visual(titulo)
+        base_prompt = f"{sujeto}, dramatic composition with clean dark empty space on the RIGHT side"
+    
+    return (
+        f"{base_prompt}, color palette of {paleta}, youtube finance thumbnail style, "
+        "hyperrealistic, 8k, high contrast, cinematic lighting, sharp focus, "
+        "no people, no faces, no text, no letters, no numbers, no watermark, no black box"
+    )
+
 # ================================================================
-# SUBTÍTULOS CON PIL (VERTICAL) - MEJORADOS
+# 📝 SUBTÍTULOS CON PIL (VERTICAL) - MEJORADOS
 # ================================================================
 def agregar_subtitulos_con_pil(imagen_path, texto, salida_path):
     try:
@@ -967,10 +1012,11 @@ def agregar_subtitulos_con_pil(imagen_path, texto, salida_path):
                 font = ImageFont.truetype("arial.ttf", 55)
             except:
                 font = ImageFont.load_default()
-                print("   ⚠️ Using default font")
+                print("   ️ Using default font")
         
         if not texto:
-            return imagen_path
+            img.save(salida_path)
+            return salida_path
         
         palabras = texto.split()
         if len(palabras) > 14:
@@ -1016,7 +1062,7 @@ def agregar_subtitulos_con_pil(imagen_path, texto, salida_path):
         return imagen_path
 
 # ================================================================
-# 🔤 FUENTE GRUESA REAL (descarga Anton, fallback a DejaVu del sistema)
+# 🔤 FUENTE GRUESA REAL
 # ================================================================
 def obtener_ruta_fuente():
     if not os.path.exists("Anton.ttf"):
@@ -1041,18 +1087,15 @@ def obtener_ruta_fuente():
     return None
 
 # ================================================================
-# 🖼️ MINIATURA PROFESIONAL (SIN rectángulo con borde)
+# ️ MINIATURA PROFESIONAL HIGH-CTR
 # ================================================================
 def crear_miniatura_profesional(prompt_miniatura, texto_portada, salida="miniatura_short_en.jpg"):
     try:
-        print("🖼️ Generating thumbnail background...")
-        fondo_url = generar_imagen_horizontal(prompt_miniatura, tema=texto_portada, intentos=2)
-        if not fondo_url:
-            print("⚠️ Could not generate background, using solid background")
-            fondo_path = generar_fondo_solido(color=(10, 10, 30), ancho=1280, alto=720)
-            fondo_url = fondo_path
+        print("🖼️ Generating HIGH-CTR thumbnail...")
         
-        if fondo_url.startswith("http"):
+        fondo_url = generar_imagen_horizontal(prompt_miniatura, tema=texto_portada, intentos=2)
+        
+        if fondo_url and fondo_url.startswith("http"):
             try:
                 r = requests.get(fondo_url, timeout=30)
                 r.raise_for_status()
@@ -1063,40 +1106,42 @@ def crear_miniatura_profesional(prompt_miniatura, texto_portada, salida="miniatu
                 print(f"⚠️ Error downloading background: {e}. Using solid background.")
                 img_path = generar_fondo_solido(color=(10, 10, 30), ancho=1280, alto=720)
         else:
-            img_path = fondo_url
+            img_path = generar_fondo_solido(color=(10, 10, 30), ancho=1280, alto=720)
         
         img = Image.open(img_path)
         img = ImageOps.fit(img, (1280, 720), Image.Resampling.LANCZOS)
         draw = ImageDraw.Draw(img)
         
         texto = texto_portada.upper().strip()
-        lineas = texto.split()
-        if len(lineas) > 3:
-            texto = ' '.join(lineas[:3])
-        else:
-            texto = ' '.join(lineas)
-        
         palabras = texto.split()
-        if len(palabras) > 1:
+        
+        if len(palabras) > 5:
+            texto = ' '.join(palabras[:5])
+            palabras = texto.split()
+        
+        if len(palabras) > 2:
             mitad = len(palabras) // 2
             lineas = [' '.join(palabras[:mitad+1]), ' '.join(palabras[mitad+1:])]
-            lineas = [l for l in lineas if l]
         else:
             lineas = [texto]
         
         ruta_fuente = obtener_ruta_fuente()
         
-        size = 130
-        while size >= 60:
+        size = 150
+        while size >= 80:
             if ruta_fuente:
                 font = ImageFont.truetype(ruta_fuente, size)
             else:
                 font = ImageFont.load_default()
+            
             ancho_max = 0
+            alto_total = 0
             for linea in lineas:
                 bbox = draw.textbbox((0, 0), linea, font=font)
                 ancho_max = max(ancho_max, bbox[2] - bbox[0])
-            if ancho_max <= 1150:
+                alto_total += bbox[3] - bbox[1] + 15
+            
+            if ancho_max <= 1100 and alto_total <= 500:
                 break
             size -= 10
         
@@ -1108,24 +1153,41 @@ def crear_miniatura_profesional(prompt_miniatura, texto_portada, salida="miniatu
             bbox = draw.textbbox((0, 0), linea, font=font)
             text_w = bbox[2] - bbox[0]
             text_h = bbox[3] - bbox[1]
-            x = 1280 - text_w - 60
+            x = 1280 - text_w - 80
             y = y_inicio + i * alto_linea
             
-            draw.text((x + 6, y + 8), linea, fill=(0, 0, 0), font=font)
-            for dx in range(-6, 7, 2):
-                for dy in range(-6, 7, 2):
+            offset = 8
+            for dx in range(-offset, offset+1, 2):
+                for dy in range(-offset, offset+1, 2):
                     draw.text((x + dx, y + dy), linea, fill='black', font=font)
-            draw.text((x, y), linea, fill=(255, 230, 60), font=font)
+            
+            draw.text((x, y), linea, fill='black', font=font)
         
-        img.save(salida)
-        print(f"✅ Professional thumbnail created: {salida}")
+        for i, linea in enumerate(lineas):
+            bbox = draw.textbbox((0, 0), linea, font=font)
+            text_w = bbox[2] - bbox[0]
+            x = 1280 - text_w - 80
+            y = y_inicio + i * alto_linea
+            
+            draw.text((x, y), linea, fill=(255, 215, 0), font=font)
+            draw.text((x-1, y), linea, fill=(255, 230, 100), font=font)
+            draw.text((x+1, y), linea, fill=(255, 230, 100), font=font)
+        
+        draw.rectangle([(1200, 50), (1260, 670)], outline=(255, 0, 0), width=4)
+        
+        img.save(salida, quality=95)
+        print(f"✅ High-CTR thumbnail created: {salida}")
+        print(f"   Text: '{texto}'")
+        print(f"   Colors: Yellow (#FFD700) on dark background with red accent")
         return salida
     except Exception as e:
-        print(f"⚠️ Error in professional thumbnail: {e}")
+        print(f"⚠️ Error in thumbnail: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 # ================================================================
-# MONTAR VIDEO SHORTS
+# 🎥 MONTAR VIDEO SHORTS CON EFECTOS DINÁMICOS
 # ================================================================
 def montar_video_shorts(recursos, fondo_path, salida="short_capital_en.mp4"):
     if not recursos:
@@ -1139,34 +1201,49 @@ def montar_video_shorts(recursos, fondo_path, salida="short_capital_en.mp4"):
         audio_path = rec["audio_path"]
         duracion = rec["duracion"]
         texto = rec.get("texto", "")
+        bloque = rec.get("block", "")
         
-        try:
-            if img_url.startswith("http"):
-                try:
-                    r = requests.get(img_url, timeout=30)
-                    r.raise_for_status()
-                    img_path = f"temp_short_en_{i}.jpg"
-                    with open(img_path, "wb") as f:
-                        f.write(r.content)
-                except:
-                    img_path = generar_fondo_solido(color=(20, 20, 50), ancho=1080, alto=1920)
-            else:
-                img_path = img_url
+        if img_url.startswith("http"):
+            try:
+                r = requests.get(img_url, timeout=30)
+                r.raise_for_status()
+                img_path = f"temp_short_en_{i}.jpg"
+                with open(img_path, "wb") as f:
+                    f.write(r.content)
+            except:
+                img_path = generar_fondo_solido(color=(20, 20, 50), ancho=1080, alto=1920)
+        else:
+            img_path = img_url
+        
+        img = Image.open(img_path)
+        img = ImageOps.fit(img, (1080, 1920), Image.Resampling.LANCZOS)
+        img.save(img_path)
+        
+        img_sub_path = f"temp_short_sub_en_{i}.jpg"
+        img_path = agregar_subtitulos_con_pil(img_path, texto, img_sub_path)
+        
+        video_clip = ImageClip(img_path).set_duration(duracion)
+        
+        if bloque == "HOOK" or i == 0:
+            video_clip = video_clip.resize(lambda t: 1.3 - 0.6 * min(t/0.5, 1.0))
             
-            img = Image.open(img_path)
-            img = ImageOps.fit(img, (1080, 1920), Image.Resampling.LANCZOS)
-            img.save(img_path)
+            if duracion > 3:
+                video_clip = video_clip.set_duration(3.0)
+                duracion = 3.0
             
-            img_sub_path = f"temp_short_sub_en_{i}.jpg"
-            img_path = agregar_subtitulos_con_pil(img_path, texto, img_sub_path)
+            print(f"   🎬 HOOK: Fast zoom effect applied (0-3s)")
             
-            video_clip = (ImageClip(img_path)
-                         .resize(lambda t: 1 + 0.02 * t)
-                         .set_duration(duracion))
-        except Exception as e:
-            print(f"⚠️ Failed image {i}: {e}")
-            img_path = generar_fondo_solido(color=(20, 20, 50), ancho=1080, alto=1920)
-            video_clip = ImageClip(img_path, duration=duracion).resize(lambda t: 1 + 0.02 * t)
+        elif bloque == "PROBLEM" or i == 1:
+            video_clip = video_clip.resize(lambda t: 1.0 + 0.02 * t)
+            
+        elif bloque == "DATA":
+            video_clip = video_clip.resize(lambda t: 1.0 + 0.01 * t)
+            
+        elif bloque == "SOLUTION":
+            video_clip = video_clip.resize(lambda t: 1.0 - 0.02 * min(t/5, 0.1))
+            
+        else:
+            video_clip = video_clip.resize(lambda t: 1 + 0.02 * t)
         
         clips_video.append(video_clip)
         
@@ -1217,7 +1294,7 @@ def montar_video_shorts(recursos, fondo_path, salida="short_capital_en.mp4"):
     return salida
 
 # ================================================================
-# SUBIR A YOUTUBE (CON HASHTAGS DINÁMICOS)
+# 📤 SUBIR A YOUTUBE
 # ================================================================
 def subir_a_youtube(video_path, titulo, etiquetas_str, gancho, contexto, hashtags, fuente="", miniatura_path=None, dynamic_hashtags=""):
     try:
@@ -1242,7 +1319,6 @@ def subir_a_youtube(video_path, titulo, etiquetas_str, gancho, contexto, hashtag
     
     print(f"📝 Final tags ({len(tags)}): {tags_str_final}")
     
-    # Hashtags fijos + dinámicos
     hashtags_fijos = "#Shorts #Finance #Investing"
     if dynamic_hashtags:
         dynamic_hashtags = sanitizar_hashtags(dynamic_hashtags, max_tags=6)
@@ -1295,7 +1371,7 @@ def subir_a_youtube(video_path, titulo, etiquetas_str, gancho, contexto, hashtag
     return video_id
 
 # ================================================================
-# LIMPIEZA
+# 🧹 LIMPIEZA
 # ================================================================
 def limpiar_archivos_temporales():
     import glob
@@ -1314,31 +1390,34 @@ def limpiar_archivos_temporales():
     print("✅ Cleanup completed")
 
 # ================================================================
-# MAIN
+# 🎯 MAIN
 # ================================================================
 def main():
     print("="*60)
-    print("🎬 Capital Minds - SHORTS BOT (ENGLISH VERSION) - IMPROVED")
-    print("   ✓ PEXELS API FOR HIGH-QUALITY IMAGES (VERTICAL & LANDSCAPE)")
-    print("   ✓ SEGMENT-SPECIFIC IMAGE PROMPTS from DeepSeek")
-    print("   ✓ Each image matches the segment's narration content")
-    print("   ✓ DYNAMIC HASHTAGS: 4-6 hashtags specific to each Short topic")
-    print("   ✓ OPTIMIZED TITLES: more clickable without being sensationalist")
-    print("   ✓ Title-adapted visual subjects (fallback)")
-    print("   ✓ 6 different compositions (one per block)")
-    print("   ✓ Random color palette per video")
-    print("   ✓ NO black boxes: overlay removed + real font download")
-    print("   ✓ 25+ formats, 60+ topics, duplicate control ES/EN")
+    print("🎬 Capital Minds - SHORTS BOT (IMPROVED)")
+    print("   ✓ Viral title formulas")
+    print("   ✓ 3-second hook optimization")
+    print("   ✓ High-CTR thumbnails (yellow on black)")
+    print("   ✓ Dynamic zoom effects")
+    print("   ✓ Trending topics analysis")
     print("="*60)
 
     tz_mexico = ZoneInfo("America/Mexico_City")
     fecha_actual = datetime.now(tz_mexico)
     fecha_formateada = fecha_actual.strftime("%B %d, %Y")
-    print(f"📅 Current date: {fecha_formateada}")
+    print(f" Current date: {fecha_formateada}")
     print("="*60)
     
     if not YOUTUBE_USER_TOKEN:
-        print("❌ YOUTUBE_USER_TOKEN_CAPITAL missing")
+        print(" YOUTUBE_USER_TOKEN_CAPITAL missing")
+        sys.exit(1)
+    
+    if not DEEPSEEK_API_KEY:
+        print(" DEEPSEEK_API_KEY missing")
+        sys.exit(1)
+    
+    if not PEXELS_API_KEY:
+        print("❌ PEXELS_API_KEY missing")
         sys.exit(1)
     
     publicadas = obtener_publicaciones_hoy()
@@ -1361,12 +1440,21 @@ def main():
     paleta_video = random.choice(PALETAS_VIDEO)
     print(f"🎨 Color palette for this video: {paleta_video}")
     
-    print("💡 Generating video idea...")
-    idea_data = generar_idea_video(tipo, fecha_formateada)
+    trends_data = None
+    try:
+        with open(TRENDS_FILE, "r", encoding="utf-8") as f:
+            trends_data = json.load(f)
+            print(f"   📈 Using trending topic: {trends_data.get('best_topic_this_week', 'N/A')}")
+    except:
+        pass
+    
+    print("💡 Generating viral video idea...")
+    idea_data = generar_idea_video(tipo, fecha_formateada, trends_data)
     if idea_data and "best_idea" in idea_data:
         idea = idea_data["best_idea"]
         print(f"   ✅ Selected idea: {idea['title']}")
-        print(f"   📌 Format: {idea.get('format', 'general')}")
+        print(f"   📌 Format: {idea.get('formula_used', 'general')}")
+        print(f"   🎯 Psychology trigger: {idea.get('psychology_trigger', 'N/A')}")
     else:
         print("⚠️ No idea generated, using fallback topic.")
         idea = None
@@ -1378,15 +1466,11 @@ def main():
     palabras_portada = guion.get("cover_words", "INSIGHT")
     prompt_miniatura = guion.get("thumbnail_prompt", "")
     
-    # Extraer textos de segmentos
-    segmentos = [seg["text"] for seg in segments_data]
-    
     print(f"🏷️ Title: {titulo}")
     print(f"🏷️ Dynamic hashtags: {dynamic_hashtags}")
     
-    # Generar recursos con prompts de DeepSeek
     recursos = generar_recursos_por_segmento(
-        segmentos, segments_data, paleta_video, titulo, tema=tema_elegido
+        segments_data, paleta_video, titulo, tema=tema_elegido
     )
     if not recursos:
         print("❌ Error generating resources.")
@@ -1395,7 +1479,6 @@ def main():
     video_path = montar_video_shorts(recursos, fondo_path, "short_capital_en.mp4")
     print(f"🎬 Video assembled: {video_path}")
     
-    # Miniatura adaptada
     miniatura_path = None
     if prompt_miniatura:
         print("🖼️ Generating professional thumbnail...")
@@ -1412,7 +1495,7 @@ def main():
         etiquetas_str=guion["tags"],
         gancho=guion["hook_description"],
         contexto=guion["context_description"],
-        hashtags="",  # Se construye internamente
+        hashtags="",
         fuente=guion.get("source_story", "Based on financial analysis"),
         miniatura_path=miniatura_path,
         dynamic_hashtags=dynamic_hashtags
