@@ -48,6 +48,9 @@ TEMAS_PUBLICADOS_FILE_ES = "temas_largos_publicados.json"
 META_DIARIA_LARGOS = 1
 DIAS_SIN_REPETIR_TEMA = 45
 
+# Variable global para rastrear imágenes usadas
+_used_image_urls = set()
+
 # ================================================================
 # VOZ EN INGLÉS
 # ================================================================
@@ -55,7 +58,7 @@ VOZ_FIJA = {"voz": "en-US-JennyNeural", "velocidad": "+8%", "tono": "-1Hz"}
 CONFIG_VOZ_ACTUAL = VOZ_FIJA
 
 # ================================================================
-# 🎨 PALETAS Y COMPOSICIONES
+#  PALETAS Y COMPOSICIONES
 # ================================================================
 PALETAS_VIDEO = [
     "electric cyan and gold neon on dark navy",
@@ -124,10 +127,10 @@ You are a VIRAL TREND ANALYST for YouTube LONG-FORM finance/crypto videos (7-9 m
 CURRENT DATE: September 2024
 YOUR TASK: Identify DEEP-DIVE TOPICS suitable for long-form content.
 
-📊 RECENTLY PUBLISHED TOPICS (avoid repeating):
+RECENTLY PUBLISHED TOPICS (avoid repeating):
 {chr(10).join(temas_recientes[:10]) if temas_recientes else "None"}
 
-🔥 TRENDING TOPICS FOR LONG-FORM (September 2024):
+TRENDING TOPICS FOR LONG-FORM (September 2024):
 
 Topics that work for 7-9 minute videos:
 1. Bitcoin price reaction to Fed rate cut - Full analysis
@@ -141,7 +144,7 @@ Topics that work for 7-9 minute videos:
 9. Crypto regulation updates - Comprehensive guide
 10. DeFi and staking yields - Detailed tutorial
 
- HIGH-SEARCH-VOLUME LONG-FORM KEYWORDS:
+HIGH-SEARCH-VOLUME LONG-FORM KEYWORDS:
 - "Bitcoin price prediction" (long-form intent)
 - "Cryptocurrency explained" (educational)
 - "Crypto news today" (breaking news)
@@ -163,22 +166,21 @@ For each topic provide:
 - Suggested hook (first 30 seconds)
 - Chapters outline (3-5 chapters)
 
-Return in JSON:
-{{
+Return in JSON format with this structure:
+{
     "trending_topics": [
-        {{
+        {
             "topic": "Bitcoin Fed Rate Cut: Complete Analysis",
-            "why_trending": "Fed just cut rates, Bitcoin reacted +7.7%, viewers want full breakdown",
+            "why_trending": "Fed just cut rates, Bitcoin reacted positively, viewers want full breakdown",
             "viral_score": 9,
             "best_format": "deep-dive",
-            "hook": "The Fed just did something unprecedented. Here's what it means for Bitcoin...",
-            "chapters": ["The Announcement", "Market Reaction", "Historical Context", "What's Next"]
-        }},
-        ...
+            "hook": "The Fed just did something unprecedented. Here is what it means for Bitcoin...",
+            "chapters": ["The Announcement", "Market Reaction", "Historical Context", "What is Next"]
+        }
     ],
     "topics_to_avoid": ["topic1", "topic2"],
     "best_topic_this_week": "Bitcoin Fed Rate Cut: Complete Analysis"
-}}
+}
 """
     
     url = "https://api.deepseek.com/v1/chat/completions"
@@ -198,17 +200,25 @@ Return in JSON:
         data = r.json()
         content = data["choices"][0]["message"]["content"]
         
+        # Limpiar el contenido
+        content = content.strip()
+        if "```json" in content:
+            content = content.replace("```json", "").replace("```", "").strip()
+        
         inicio = content.find("{")
         fin = content.rfind("}")
-        json_str = content[inicio:fin+1]
-        
-        trends = json.loads(json_str)
-        
-        with open(TRENDS_FILE, "w", encoding="utf-8") as f:
-            json.dump(trends, f, indent=2, ensure_ascii=False)
-        
-        print(f"   ✅ Best topic this week: {trends.get('best_topic_this_week', 'N/A')}")
-        return trends
+        if inicio != -1 and fin != -1:
+            json_str = content[inicio:fin+1]
+            trends = json.loads(json_str)
+            
+            with open(TRENDS_FILE, "w", encoding="utf-8") as f:
+                json.dump(trends, f, indent=2, ensure_ascii=False)
+            
+            print(f"   ✅ Best topic this week: {trends.get('best_topic_this_week', 'N/A')}")
+            return trends
+        else:
+            print("⚠️ No JSON found in response")
+            return None
         
     except Exception as e:
         print(f"⚠️ Error analyzing trends: {e}")
@@ -228,8 +238,8 @@ def generar_idea_video_largo(tipo, fecha_actual, trends_data=None):
     prompt = f"""
 You are a VIRAL CONTENT STRATEGIST for YouTube LONG-FORM videos (7-9 minutes) in finance/crypto.
 
-📅 CURRENT DATE: {fecha_actual}
-📊 YOUR GOAL: Generate ideas that get 10,000+ views and HIGH retention (60%+)
+CURRENT DATE: {fecha_actual}
+YOUR GOAL: Generate ideas that get 10,000+ views and HIGH retention (60%+)
 
 {tema_sugerido}
 VIRAL TITLE FORMULAS FOR LONG-FORM (use these):
@@ -248,21 +258,21 @@ FORMULA 3 - COMPARISON:
 
 FORMULA 4 - BREAKING NEWS:
 "BREAKING: [EVENT] - What It Means (Full Analysis)"
-"[EVENT] Just Happened - Here's What's Next"
+"[EVENT] Just Happened - Here is What is Next"
 
 FORMULA 5 - CONTROVERSY:
 "Why [COMMON BELIEF] Is Wrong (Evidence)"
-"The [TOPIC] Lie They Don't Want You to Know"
+"The [TOPIC] Lie They Do Not Want You to Know"
 
 FORMULA 6 - PREDICTION:
-"[TOPIC] Price Prediction: What's Next?"
+"[TOPIC] Price Prediction: What is Next?"
 "Where [TOPIC] Is Heading in 2024"
 
 FORMULA 7 - STEP-BY-STEP:
 "How to [ACHIEVE X] (Step-by-Step Guide)"
 "[NUMBER] Steps to Master [TOPIC]"
 
- TRENDING TOPICS FOR LONG-FORM (September 2024):
+TRENDING TOPICS FOR LONG-FORM (September 2024):
 - Bitcoin price reaction to Fed rate cut
 - Federal Reserve interest rate decisions
 - Bitcoin vs Gold performance comparison
@@ -274,27 +284,26 @@ FORMULA 7 - STEP-BY-STEP:
 - Crypto regulation updates
 - DeFi and staking yields
 
-🎯 YOUR TASK: Generate 5 LONG-FORM VIDEO IDEAS using the formulas above.
+YOUR TASK: Generate 5 LONG-FORM VIDEO IDEAS using the formulas above.
 
 REQUIREMENTS:
-✅ Title: 60-70 characters (SEO optimized)
-✅ Include 1 emoji (📊📈💰🔍⚠️)
-✅ Create CURIOSITY GAP (promise value)
-✅ Use POWER WORDS: Complete, Ultimate, Truth, Exposed, Guide, Analysis, Prediction
-✅ AVOID: Generic titles like "Bitcoin Update" or "Market News"
-✅ Must be suitable for 7-9 minute deep-dive
+- Title: 60-70 characters (SEO optimized)
+- Include 1 emoji (📊💰🔍)
+- Create CURIOSITY GAP (promise value)
+- Use POWER WORDS: Complete, Ultimate, Truth, Exposed, Guide, Analysis, Prediction
+- AVOID: Generic titles like "Bitcoin Update" or "Market News"
+- Must be suitable for 7-9 minute deep-dive
 
 For each idea provide:
 - Title (with formula used)
-- Hook (first 30 seconds - MUST hook viewers)
+- Hook (first 30 seconds - MUST retain viewers)
 - Main value proposition (what viewers will learn)
-- Why it's viral (psychology trigger)
+- Why it is viral (psychology trigger)
 - Estimated chapters (3-5)
 
-Then SELECT THE BEST ONE and return in JSON:
-
-{{
-    "best_idea": {{
+Then SELECT THE BEST ONE and return in JSON format:
+{
+    "best_idea": {
         "title": "Final viral title (60-70 chars)",
         "hook_30sec": "First 30 seconds script (MUST retain viewers)",
         "description": "What viewers will learn",
@@ -302,12 +311,12 @@ Then SELECT THE BEST ONE and return in JSON:
         "psychology_trigger": "curiosity/fear/greed/education/urgency",
         "type": "{tipo}",
         "estimated_duration": "7-9 minutes"
-    }},
+    },
     "all_ideas": [
-        {{"title": "...", "hook_30sec": "...", "formula": "...", "viral_score": 9}},
+        {"title": "...", "hook_30sec": "...", "formula": "...", "viral_score": 9},
         ...
     ]
-}}
+}
 """
     url = "https://api.deepseek.com/v1/chat/completions"
     headers = {"Authorization": f"Bearer {DEEPSEEK_API_KEY}", "Content-Type": "application/json"}
@@ -324,16 +333,24 @@ Then SELECT THE BEST ONE and return in JSON:
         r.raise_for_status()
         data = r.json()
         content = data["choices"][0]["message"]["content"]
+        
+        # Limpiar contenido
+        content = content.strip()
+        if "```json" in content:
+            content = content.replace("```json", "").replace("```", "").strip()
+        
         inicio = content.find("{")
         fin = content.rfind("}")
-        json_str = content[inicio:fin+1]
-        return json.loads(json_str)
+        if inicio != -1 and fin != -1:
+            json_str = content[inicio:fin+1]
+            return json.loads(json_str)
+        return None
     except Exception as e:
         print(f"⚠️ Error generating ideas: {e}")
         return None
 
 # ================================================================
-# ️ SANITIZAR HASHTAGS Y TAGS
+# 🏷️ SANITIZAR HASHTAGS Y TAGS
 # ================================================================
 def sanitizar_hashtags(hashtags_str, max_tags=8):
     if not hashtags_str:
@@ -529,252 +546,65 @@ def tema_ya_publicado(tema, dias=45):
     return False
 
 # ================================================================
-# 📝 GENERAR GUION LARGO OPTIMIZADO (RETENCIÓN ALTA)
+# 🖼️ GENERAR IMAGEN HORIZONTAL (PEXELS - OPTIMIZADO CON 5 INTENTOS)
 # ================================================================
-def generar_guion_largo(tipo, fecha_actual, idea=None):
-    titulos_pub = cargar_titulos_publicados()["titulos"][-10:]
-    titulos_referencia = "\n".join([f"- {t}" for t in titulos_pub]) if titulos_pub else "None yet."
-
-    if not idea:
-        print("💡 Generating idea with viral formulas...")
-        idea_data = generar_idea_video_largo(tipo, fecha_actual)
-        if idea_data and "best_idea" in idea_data:
-            idea = idea_data["best_idea"]
-            print(f"   ✅ Selected idea: {idea['title']}")
-            print(f"   📌 Format: {idea.get('formula_used', 'general')}")
-        else:
-            print("⚠️ No idea generated, using fallback topic.")
-            idea = {"title": "Bitcoin Market Analysis", "hook_30sec": "Bitcoin just did something unprecedented...", "description": "Full market breakdown", "type": "analysis"}
-
-    tema_elegido = idea["title"]
-    hook_sugerido = idea.get("hook_30sec", "")
+def generar_imagen_horizontal(prompt, tema="", bloque="", intentos=5):
+    """
+    MEJORADO: 5 intentos, modificadores aleatorios y prevención de imágenes duplicadas.
+    """
+    global _used_image_urls
     
-    prompt = f"""
-You are a PROFESSIONAL SCRIPTWRITER and FINANCE EXPERT for YouTube LONG-FORM videos (7-9 minutes).
-
- VIDEO IDEA: "{tema_elegido}"
-📌 HOOK (first 30s): "{hook_sugerido}"
- CONTENT TYPE: {tipo.upper()}
-📅 CURRENT DATE: {fecha_actual}
-
-⚠️ DATE RULE (CRITICAL):
-   - DO NOT use past dates like 2020, 2021, 2022, 2023 or 2024.
-   - Use current year: {fecha_actual.split()[-1]}.
-   - Say "today", "this week", or "recently" for recent events.
-
-🎯 GOLDEN RULE (CRITICAL FOR RETENTION):
-- Script MUST be 1300-1500 words (7-9 minutes at normal pace).
-- First 30 seconds MUST hook viewers (use pattern interrupt).
-- Include MINI-HOOKS every 2 minutes to maintain retention.
-- Each section must deliver value and create curiosity for next section.
-
-🎯 MANDATORY STRUCTURE (Challenge → Process → Result):
-
-[HOOK - 0:00] Pattern interrupt + promise (100-150 words)
-   - Start with shocking statement, question, or pattern interrupt
-   - Promise specific value viewers will get
-   - Create curiosity gap
-
-[INTRO - 0:30] Context and why it matters (200-250 words)
-   - Explain the topic and why viewers should care
-   - Establish credibility
-   - Preview what's coming (chapters)
-
-[CHAPTER 1 - 1:30] Foundation/Background (250-300 words)
-   - Set the stage with context
-   - Key concepts explained
-   - First mini-hook at end
-
-[CHAPTER 2 - 3:30] Deep Dive/Analysis (300-350 words)
-   - Main content with data/examples
-   - Step-by-step breakdown
-   - Second mini-hook at end
-
-[CHAPTER 3 - 5:30] Advanced Insights/Solution (300-350 words)
-   - Advanced strategies or solution
-   - Real examples and proof
-   - Third mini-hook at end
-
-[CHAPTER 4 - 7:30] What's Next/Action Steps (250-300 words)
-   - Practical application
-   - What viewers should do
-   - Final insights
-
-[CLOSE - 8:30] Summary and CTA (150-200 words)
-   - Recap key points
-   - Strong CTA (subscribe, comment, like)
-   - Tease next video
-
-🎯 RETENTION TACTICS (USE THROUGHOUT):
-- "But here's where it gets interesting..."
-- "Now, this is where most people make a mistake..."
-- "I'll show you exactly how to..."
-- "The data shows something surprising..."
-- "Here's what nobody is talking about..."
-
-🎯 NUMBERS RULE:
-- Write numbers with LETTERS: "four hundred", not "400"
-- For ranges: "between X and Y"
-
-🎯 TONE:
-- Conversational, like talking to a friend
-- Use rhetorical questions
-- Include analogies and comparisons
-- Vary sentence length for rhythm
-
-🎯 IMAGE PROMPTS (One per segment - BE SPECIFIC):
-   Each prompt MUST match the segment content:
-   
-   For HOOK: "dramatic financial scene, urgent neon lights, high contrast, cinematic 8k"
-   For INTRO: "professional finance background, charts and data, blue and gold neon"
-   For CHAPTER 1: "educational visual, clean charts, explanatory graphics, cyan and gold"
-   For CHAPTER 2: "detailed analysis visuals, data charts, professional, emerald and silver"
-   For CHAPTER 3: "solution-oriented visuals, upward trends, success, gold accents"
-   For CHAPTER 4: "action steps visual, clear graphics, professional, teal and amber"
-   For CLOSE: "call-to-action visual, engaging, dynamic, violet and orange"
-
-🎯 HASHTAGS (5-8 specific to topic):
-   Example: "#Bitcoin #Crypto #BitcoinAnalysis #CryptoNews #MarketAnalysis"
-
-🎯 THUMBNAIL PROMPT:
-   - One dominant subject
-   - High contrast (yellow/red on black)
-   - Space for 3-5 words of text
-   - Example: "Bitcoin with dramatic lighting, yellow and red accents, black background, space for text"
-
-🎯 TAGS (25-30 keywords):
-   - Comma-separated ONLY
-   - NO special characters (#, $, %, &)
-   - Simple keywords: "bitcoin", "crypto", "trading"
-   - Maximum 500 characters total
-
-🚫 TITLES ALREADY PUBLISHED (DO NOT REPEAT):
-{titulos_referencia}
-
- RESPONSE IN JSON:
-{{
-    "title": "Optimized title (60-70 chars with emoji)",
-    "alternative_title": "Alternative for A/B testing",
-    "keywords": ["kw1", "kw2", "kw3", "kw4", "kw5"],
-    "description": "Full description with chapters and hashtags",
-    "tags": "25-30 tags comma separated (NO #, NO special chars)",
-    "dynamic_hashtags": "#Bitcoin #Crypto #BitcoinAnalysis #MarketAnalysis",
-    "script": "Full script 1300-1500 words with 7 marked blocks: [HOOK], [INTRO], [CHAPTER 1], [CHAPTER 2], [CHAPTER 3], [CHAPTER 4], [CLOSE]",
-    "segments": [
-        {{"block": "HOOK", "text": "text (~100-150 words)", "image_prompt": "dramatic financial scene, urgent neon lights, high contrast, cinematic 8k", "timestamp": "0:00"}},
-        {{"block": "INTRO", "text": "text (~200-250 words)", "image_prompt": "professional finance background, charts and data, blue and gold neon", "timestamp": "0:30"}},
-        {{"block": "CHAPTER 1", "text": "text (~250-300 words)", "image_prompt": "educational visual, clean charts, explanatory graphics, cyan and gold", "timestamp": "1:30"}},
-        {{"block": "CHAPTER 2", "text": "text (~300-350 words)", "image_prompt": "detailed analysis visuals, data charts, professional, emerald and silver", "timestamp": "3:30"}},
-        {{"block": "CHAPTER 3", "text": "text (~300-350 words)", "image_prompt": "solution-oriented visuals, upward trends, success, gold accents", "timestamp": "5:30"}},
-        {{"block": "CHAPTER 4", "text": "text (~250-300 words)", "image_prompt": "action steps visual, clear graphics, professional, teal and amber", "timestamp": "7:30"}},
-        {{"block": "CLOSE", "text": "text (~150-200 words)", "image_prompt": "call-to-action visual, engaging, dynamic, violet and orange", "timestamp": "8:30"}}
-    ],
-    "cover_words": "2-3 words for thumbnail (e.g., 'FULL ANALYSIS')",
-    "thumbnail_prompt": "Bitcoin dramatic lighting, yellow and red on black, space for text, YouTube thumbnail style, 16:9"
-}}
-"""
-    url = "https://api.deepseek.com/v1/chat/completions"
-    headers = {"Authorization": f"Bearer {DEEPSEEK_API_KEY}", "Content-Type": "application/json"}
-    payload = {
-        "model": "deepseek-chat",
-        "messages": [{"role": "user", "content": prompt}],
-        "temperature": 0.8,
-        "max_tokens": 4000,
-        "response_format": {"type": "json_object"}
-    }
-    
-    for intento in range(3):
-        try:
-            print(f" Generating script (attempt {intento+1}/3)...")
-            r = requests.post(url, headers=headers, json=payload, timeout=150)
-            r.raise_for_status()
-            data = r.json()
-            content = data["choices"][0]["message"]["content"]
-            inicio = content.find("{")
-            fin = content.rfind("}")
-            json_str = content[inicio:fin+1]
-            result = json.loads(json_str)
-            
-            guion_texto = result.get("script", "")
-            palabras = len(re.findall(r'\w+', guion_texto))
-            print(f" Script words: {palabras}")
-            
-            if palabras < 1100:
-                print(f"⚠️ Script too short ({palabras} words). Adjusting...")
-                global VOZ_FIJA, CONFIG_VOZ_ACTUAL
-                VOZ_FIJA = {"voz": "en-US-JennyNeural", "velocidad": "+5%", "tono": "-1Hz"}
-                CONFIG_VOZ_ACTUAL = VOZ_FIJA
-            
-            if "thumbnail_prompt" not in result:
-                result["thumbnail_prompt"] = "Bitcoin dramatic lighting, yellow and red on black, space for text"
-            
-            if "dynamic_hashtags" not in result:
-                result["dynamic_hashtags"] = ""
-            
-            for seg in result.get("segments", []):
-                if not seg.get("image_prompt") or len(seg["image_prompt"].split()) < 5:
-                    seg["image_prompt"] = f"cinematic financial scene about {tema_elegido[:50]}, neon lighting, hyperrealistic, 8k, no people, no text"
-                if "timestamp" not in seg:
-                    seg["timestamp"] = "0:00"
-            
-            return result, tema_elegido, idea.get("description", "Financial analysis")
-        except Exception as e:
-            print(f"❌ Attempt {intento+1}/3 failed: {e}")
-            time.sleep(10)
-    
-    print("❌ Error generating script after 3 attempts")
-    sys.exit(1)
-
-# ================================================================
-# 🖼️ GENERAR IMAGEN HORIZONTAL (PEXELS - OPTIMIZADO)
-# ================================================================
-def generar_imagen_horizontal(prompt, tema="", intentos=3):
     keyword_map = {
+        "HOOK": "urgent financial crisis red alert",
+        "INTRO": "professional finance background charts",
+        "CHAPTER 1": "educational financial data charts",
+        "CHAPTER 2": "detailed analysis graphs data",
+        "CHAPTER 3": "solution success upward trend",
+        "CHAPTER 4": "action steps strategy planning",
+        "CLOSE": "professional call to action",
         "bitcoin": "bitcoin cryptocurrency trading",
         "crash": "stock market crash red chart",
         "gold": "gold bars wealth luxury",
         "fed": "federal reserve bank building",
         "crypto": "cryptocurrency blockchain technology",
         "trading": "trading charts candlestick graph",
-        "money": "money cash dollars finance",
-        "economy": "economy finance business stock market",
-        "investment": "investment portfolio finance growth",
-        "panic": "stress business crisis emergency",
-        "success": "success growth profit upward chart",
-        "warning": "warning alert danger red emergency",
-        "chart": "financial charts graph trading",
-        "market": "stock market trading floor",
         "analysis": "financial analysis data charts",
         "guide": "educational finance tutorial",
     }
     
-    search_query = ""
+    base_query = "finance business stock market charts"
     prompt_lower = prompt.lower()
     
-    for key, value in keyword_map.items():
-        if key in prompt_lower:
-            search_query = value
-            break
-    
-    if not search_query:
-        search_query = "finance business stock market charts"
+    if bloque and bloque in keyword_map:
+        base_query = keyword_map[bloque]
+    else:
+        for key, value in keyword_map.items():
+            if key in prompt_lower:
+                base_query = value
+                break
+
+    modifiers = [
+        "abstract dark background", "neon glowing lights", "cinematic dramatic lighting",
+        "macro close up detail", "minimalist clean", "vibrant colors high contrast"
+    ]
     
     fallback_queries = [
-        search_query,
-        "abstract dark finance background",
-        "stock market trading charts",
-        "cryptocurrency bitcoin technology",
-        "business finance economy",
+        f"{base_query} {random.choice(modifiers)}",
+        f"{base_query} {random.choice(modifiers)}",
+        f"abstract {base_query.split()[0] if base_query else 'finance'} dark",
+        "stock market trading charts neon",
+        "cryptocurrency blockchain abstract"
     ]
     
     for intento in range(intentos):
         current_query = fallback_queries[intento % len(fallback_queries)]
+        random_page = random.randint(1, 5)
         
-        url = f"https://api.pexels.com/v1/search?query={current_query.replace(' ', '+')}&per_page=5&orientation=landscape"
+        url = f"https://api.pexels.com/v1/search?query={current_query.replace(' ', '+')}&per_page=5&orientation=landscape&page={random_page}"
         headers = {"Authorization": PEXELS_API_KEY}
         
         try:
-            print(f"   🖼️ Pexels search: '{current_query}' (attempt {intento+1})")
+            print(f"   🖼️ Pexels search: '{current_query}' (Intento {intento+1}/{intentos})")
             r = requests.get(url, headers=headers, timeout=30)
             
             if r.status_code == 200:
@@ -782,30 +612,25 @@ def generar_imagen_horizontal(prompt, tema="", intentos=3):
                 if data.get("photos") and len(data["photos"]) > 0:
                     photos = data["photos"][:5]
                     
-                    best_photo = None
-                    best_score = 0
-                    
                     for photo in photos:
-                        score = 0
-                        if photo.get("src", {}).get("landscape"):
-                            score += 10
-                        if photo.get("avg_color") and photo["avg_color"].lower() in ["#1a1a1a", "#2d2d2d", "#000000", "#1c1c1c"]:
-                            score += 5
-                        if score > best_score:
-                            best_score = score
-                            best_photo = photo
-                    
-                    if best_photo:
-                        img_url = best_photo["src"].get("landscape") or best_photo["src"].get("original")
-                        print(f"   ✅ Found landscape image: {best_photo.get('photographer', 'Unknown')}")
+                        img_url = photo["src"].get("landscape") or photo["src"].get("original")
+                        
+                        if img_url in _used_image_urls:
+                            print(f"   ⚠️ Image already used, searching another...")
+                            continue
+                        
+                        _used_image_urls.add(img_url)
+                        print(f"   ✅ Found unique landscape image: {photo.get('photographer', 'Unknown')}")
                         return img_url
                         
         except Exception as e:
-            print(f"   ️ Error: {e}")
+            print(f"   ⚠️ Connection error: {e}")
             
         if intento < intentos - 1:
-            time.sleep(3)
+            print(f"   ⏳ Waiting 6 seconds before next attempt...")
+            time.sleep(6)
     
+    print(f"   ❌ No unique images found after {intentos} attempts.")
     return None
 
 # ================================================================
@@ -823,7 +648,7 @@ def generar_fondo_solido(color=(20, 20, 50), ancho=1280, alto=720):
 def obtener_ruta_fuente():
     if not os.path.exists("Anton.ttf"):
         try:
-            print("📥 Downloading Anton font...")
+            print(" Downloading Anton font...")
             url = "https://github.com/google/fonts/raw/main/ofl/anton/Anton-Regular.ttf"
             r = requests.get(url, timeout=30)
             if r.status_code == 200 and len(r.content) > 10000:
@@ -831,7 +656,7 @@ def obtener_ruta_fuente():
                     f.write(r.content)
                 print("✅ Anton font downloaded")
         except Exception as e:
-            print(f"️ Font download failed: {e}")
+            print(f"⚠️ Font download failed: {e}")
     rutas = [
         "Anton.ttf",
         "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
@@ -843,13 +668,26 @@ def obtener_ruta_fuente():
     return None
 
 # ================================================================
-# 🖼️ MINIATURA PROFESIONAL HIGH-CTR
+# 🖼️ MINIATURA PROFESIONAL HIGH-CTR (ESPECÍFICA PARA LARGOS)
 # ================================================================
 def crear_miniatura_profesional(prompt_miniatura, texto_portada, salida="miniatura_largo_en.jpg"):
+    """
+    MINIATURA PARA VIDEOS LARGOS - Más profesional, informativa
+    Texto un poco más pequeño, más espacio para detalles
+    """
     try:
-        print("🖼️ Generating HIGH-CTR thumbnail...")
+        print("🖼️ Generating LONG VIDEO thumbnail (professional)...")
         
-        fondo_url = generar_imagen_horizontal(prompt_miniatura, tema=texto_portada, intentos=2)
+        # Prompt específico para LARGOS - más profesional
+        prompt_largo = (
+            f"{prompt_miniatura}, "
+            "professional documentary style, "
+            "balanced contrast, cinematic composition, "
+            "neon accents (cyan and gold), "
+            "space for detailed text on right side"
+        )
+        
+        fondo_url = generar_imagen_horizontal(prompt_largo, tema=texto_portada, intentos=2)
         
         if fondo_url and fondo_url.startswith("http"):
             try:
@@ -860,14 +698,15 @@ def crear_miniatura_profesional(prompt_miniatura, texto_portada, salida="miniatu
                     f.write(r.content)
             except Exception as e:
                 print(f"⚠️ Error downloading background: {e}. Using solid background.")
-                img_path = generar_fondo_solido(color=(10, 10, 30), ancho=1280, alto=720)
+                img_path = generar_fondo_solido(color=(10, 10, 25), ancho=1280, alto=720)
         else:
-            img_path = generar_fondo_solido(color=(10, 10, 30), ancho=1280, alto=720)
+            img_path = generar_fondo_solido(color=(10, 10, 25), ancho=1280, alto=720)
         
         img = Image.open(img_path)
         img = ImageOps.fit(img, (1280, 720), Image.Resampling.LANCZOS)
         draw = ImageDraw.Draw(img)
         
+        # TEXTO PARA LARGOS - Hasta 5 palabras, más descriptivo
         texto = texto_portada.upper().strip()
         palabras = texto.split()
         
@@ -883,7 +722,8 @@ def crear_miniatura_profesional(prompt_miniatura, texto_portada, salida="miniatu
         
         ruta_fuente = obtener_ruta_fuente()
         
-        size = 150
+        # FUENTE un poco MÁS PEQUEÑA para LARGOS
+        size = 140  # Más pequeño que en shorts (180)
         while size >= 80:
             if ruta_fuente:
                 font = ImageFont.truetype(ruta_fuente, size)
@@ -905,12 +745,12 @@ def crear_miniatura_profesional(prompt_miniatura, texto_portada, salida="miniatu
         alto_total = alto_linea * len(lineas)
         y_inicio = (720 - alto_total) // 2
         
-        # Sombra negra
+        # Sombra estándar
         offset = 8
         for i, linea in enumerate(lineas):
             bbox = draw.textbbox((0, 0), linea, font=font)
             text_w = bbox[2] - bbox[0]
-            x = 1280 - text_w - 80
+            x = 1280 - text_w - 80  # Más espacio
             y = y_inicio + i * alto_linea
             
             for dx in range(-offset, offset+1, 2):
@@ -919,27 +759,27 @@ def crear_miniatura_profesional(prompt_miniatura, texto_portada, salida="miniatu
             
             draw.text((x, y), linea, fill='black', font=font)
         
-        # Texto amarillo neón
+        # Texto AMARILLO DORADO (más profesional)
         for i, linea in enumerate(lineas):
             bbox = draw.textbbox((0, 0), linea, font=font)
             text_w = bbox[2] - bbox[0]
             x = 1280 - text_w - 80
             y = y_inicio + i * alto_linea
             
-            draw.text((x, y), linea, fill=(255, 215, 0), font=font)
-            draw.text((x-1, y), linea, fill=(255, 230, 100), font=font)
-            draw.text((x+1, y), linea, fill=(255, 230, 100), font=font)
+            draw.text((x, y), linea, fill=(255, 215, 0), font=font)  # #FFD700 (gold)
+            draw.text((x-1, y), linea, fill=(255, 225, 80), font=font)
+            draw.text((x+1, y), linea, fill=(255, 225, 80), font=font)
         
-        # Borde rojo
-        draw.rectangle([(1200, 50), (1260, 670)], outline=(255, 0, 0), width=4)
+        # Borde ROJO más DELGADO para LARGOS
+        draw.rectangle([(1200, 50), (1260, 670)], outline=(255, 100, 100), width=4)
         
         img.save(salida, quality=95)
-        print(f"✅ High-CTR thumbnail created: {salida}")
-        print(f"   Text: '{texto}'")
-        print(f"   Colors: Yellow (#FFD700) on dark with red accent")
+        print(f"✅ LONG VIDEO thumbnail created: {salida}")
+        print(f"   Text: '{texto}' (professional size)")
+        print(f"   Colors: Gold (#FFD700) with thin red border")
         return salida
     except Exception as e:
-        print(f"⚠️ Error in thumbnail: {e}")
+        print(f"⚠️ Error in LONG thumbnail: {e}")
         import traceback
         traceback.print_exc()
         return None
@@ -1086,6 +926,215 @@ def crear_cta_final_pil(duracion=3, ancho=1280, alto=720):
         return None
 
 # ================================================================
+# 📝 GENERAR GUION LARGO OPTIMIZADO (CON MANEJO DE ERRORES JSON)
+# ================================================================
+def generar_guion_largo(tipo, fecha_actual, idea=None):
+    titulos_pub = cargar_titulos_publicados()["titulos"][-10:]
+    titulos_referencia = "\n".join([f"- {t}" for t in titulos_pub]) if titulos_pub else "None yet."
+
+    if not idea:
+        print("💡 Generating idea with viral formulas...")
+        idea_data = generar_idea_video_largo(tipo, fecha_actual)
+        if idea_data and "best_idea" in idea_data:
+            idea = idea_data["best_idea"]
+            print(f"   ✅ Selected idea: {idea['title']}")
+            print(f"   📌 Format: {idea.get('formula_used', 'general')}")
+        else:
+            print("⚠️ No idea generated, using fallback topic.")
+            idea = {"title": "Bitcoin Market Analysis", "hook_30sec": "Bitcoin just did something unprecedented...", "description": "Full market breakdown", "type": "analysis"}
+
+    tema_elegido = idea["title"]
+    hook_sugerido = idea.get("hook_30sec", "")
+    
+    prompt = f"""
+You are a PROFESSIONAL SCRIPTWRITER and FINANCE EXPERT for YouTube LONG-FORM videos (7-9 minutes).
+
+VIDEO IDEA: "{tema_elegido}"
+HOOK (first 30s): "{hook_sugerido}"
+CONTENT TYPE: {tipo.upper()}
+CURRENT DATE: {fecha_actual}
+
+DATE RULE (CRITICAL):
+- DO NOT use past dates like 2020, 2021, 2022, 2023 or 2024.
+- Use current year: {fecha_actual.split()[-1]}.
+- Say "today", "this week", or "recently" for recent events.
+
+GOLDEN RULE (CRITICAL FOR RETENTION):
+- Script MUST be 1300-1500 words (7-9 minutes at normal pace).
+- First 30 seconds MUST hook viewers (use pattern interrupt).
+- Include MINI-HOOKS every 2 minutes to maintain retention.
+- Each section must deliver value and create curiosity for next section.
+
+MANDATORY STRUCTURE (Challenge to Process to Result):
+
+[HOOK - 0:00] Pattern interrupt plus promise (100-150 words)
+   - Start with shocking statement, question, or pattern interrupt
+   - Promise specific value viewers will get
+   - Create curiosity gap
+
+[INTRO - 0:30] Context and why it matters (200-250 words)
+   - Explain the topic and why viewers should care
+   - Establish credibility
+   - Preview what is coming (chapters)
+
+[CHAPTER 1 - 1:30] Foundation or Background (250-300 words)
+   - Set the stage with context
+   - Key concepts explained
+   - First mini-hook at end
+
+[CHAPTER 2 - 3:30] Deep Dive or Analysis (300-350 words)
+   - Main content with data or examples
+   - Step-by-step breakdown
+   - Second mini-hook at end
+
+[CHAPTER 3 - 5:30] Advanced Insights or Solution (300-350 words)
+   - Advanced strategies or solution
+   - Real examples and proof
+   - Third mini-hook at end
+
+[CHAPTER 4 - 7:30] What is Next or Action Steps (250-300 words)
+   - Practical application
+   - What viewers should do
+   - Final insights
+
+[CLOSE - 8:30] Summary and CTA (150-200 words)
+   - Recap key points
+   - Strong CTA (subscribe, comment, like)
+   - Tease next video
+
+RETENTION TACTICS (USE THROUGHOUT):
+- "But here is where it gets interesting..."
+- "Now, this is where most people make a mistake..."
+- "I will show you exactly how to..."
+- "The data shows something surprising..."
+- "Here is what nobody is talking about..."
+
+NUMBERS RULE:
+- Write numbers with LETTERS: "four hundred", not "400"
+- For ranges: "between X and Y"
+
+TONE:
+- Conversational, like talking to a friend
+- Use rhetorical questions
+- Include analogies and comparisons
+- Vary sentence length for rhythm
+
+IMAGE PROMPTS (One per segment - BE SPECIFIC):
+   Each prompt MUST match the segment content:
+   
+   For HOOK: "dramatic financial scene, urgent neon lights, high contrast, cinematic 8k"
+   For INTRO: "professional finance background, charts and data, blue and gold neon"
+   For CHAPTER 1: "educational visual, clean charts, explanatory graphics, cyan and gold"
+   For CHAPTER 2: "detailed analysis visuals, data charts, professional, emerald and silver"
+   For CHAPTER 3: "solution-oriented visuals, upward trends, success, gold accents"
+   For CHAPTER 4: "action steps visual, clear graphics, professional, teal and amber"
+   For CLOSE: "call-to-action visual, engaging, dynamic, violet and orange"
+
+HASHTAGS (5-8 specific to topic):
+   Example: "#Bitcoin #Crypto #BitcoinAnalysis #CryptoNews #MarketAnalysis"
+
+THUMBNAIL PROMPT:
+   - One dominant subject
+   - High contrast (yellow/red on black)
+   - Space for 3-5 words of text
+   - Example: "Bitcoin with dramatic lighting, yellow and red accents, black background, space for text"
+
+TAGS (25-30 keywords):
+   - Comma-separated ONLY
+   - NO special characters (#, $, %, &)
+   - Simple keywords: "bitcoin", "crypto", "trading"
+   - Maximum 500 characters total
+
+TITLES ALREADY PUBLISHED (DO NOT REPEAT):
+{titulos_referencia}
+
+RESPONSE IN JSON FORMAT:
+{{
+    "title": "Optimized title (60-70 chars with emoji)",
+    "alternative_title": "Alternative for A/B testing",
+    "keywords": ["kw1", "kw2", "kw3", "kw4", "kw5"],
+    "description": "Full description with chapters and hashtags",
+    "tags": "25-30 tags comma separated (NO #, NO special chars)",
+    "dynamic_hashtags": "#Bitcoin #Crypto #BitcoinAnalysis #MarketAnalysis",
+    "script": "Full script 1300-1500 words with 7 marked blocks: [HOOK], [INTRO], [CHAPTER 1], [CHAPTER 2], [CHAPTER 3], [CHAPTER 4], [CLOSE]",
+    "segments": [
+        {{"block": "HOOK", "text": "text (~100-150 words)", "image_prompt": "dramatic financial scene, urgent neon lights, high contrast, cinematic 8k", "timestamp": "0:00"}},
+        {{"block": "INTRO", "text": "text (~200-250 words)", "image_prompt": "professional finance background, charts and data, blue and gold neon", "timestamp": "0:30"}},
+        {{"block": "CHAPTER 1", "text": "text (~250-300 words)", "image_prompt": "educational visual, clean charts, explanatory graphics, cyan and gold", "timestamp": "1:30"}},
+        {{"block": "CHAPTER 2", "text": "text (~300-350 words)", "image_prompt": "detailed analysis visuals, data charts, professional, emerald and silver", "timestamp": "3:30"}},
+        {{"block": "CHAPTER 3", "text": "text (~300-350 words)", "image_prompt": "solution-oriented visuals, upward trends, success, gold accents", "timestamp": "5:30"}},
+        {{"block": "CHAPTER 4", "text": "text (~250-300 words)", "image_prompt": "action steps visual, clear graphics, professional, teal and amber", "timestamp": "7:30"}},
+        {{"block": "CLOSE", "text": "text (~150-200 words)", "image_prompt": "call-to-action visual, engaging, dynamic, violet and orange", "timestamp": "8:30"}}
+    ],
+    "cover_words": "2-3 words for thumbnail (e.g., 'FULL ANALYSIS')",
+    "thumbnail_prompt": "Bitcoin dramatic lighting, yellow and red on black, space for text, YouTube thumbnail style, 16:9"
+}}
+"""
+    url = "https://api.deepseek.com/v1/chat/completions"
+    headers = {"Authorization": f"Bearer {DEEPSEEK_API_KEY}", "Content-Type": "application/json"}
+    payload = {
+        "model": "deepseek-chat",
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.8,
+        "max_tokens": 4000,
+        "response_format": {"type": "json_object"}
+    }
+    
+    for intento in range(3):
+        try:
+            print(f"🔄 Generating script (attempt {intento+1}/3)...")
+            r = requests.post(url, headers=headers, json=payload, timeout=150)
+            r.raise_for_status()
+            data = r.json()
+            content = data["choices"][0]["message"]["content"]
+            
+            # Limpiar contenido
+            content = content.strip()
+            if "```json" in content:
+                content = content.replace("```json", "").replace("```", "").strip()
+            
+            inicio = content.find("{")
+            fin = content.rfind("}")
+            if inicio != -1 and fin != -1:
+                json_str = content[inicio:fin+1]
+                # Reemplazar saltos de línea problemáticos en strings
+                json_str = re.sub(r'(?<!\\)\n', '\\n', json_str)
+                result = json.loads(json_str)
+            else:
+                raise ValueError("No JSON found in response")
+            
+            guion_texto = result.get("script", "")
+            palabras = len(re.findall(r'\w+', guion_texto))
+            print(f"📊 Script words: {palabras}")
+            
+            if palabras < 1100:
+                print(f"⚠️ Script too short ({palabras} words). Adjusting...")
+                global VOZ_FIJA, CONFIG_VOZ_ACTUAL
+                VOZ_FIJA = {"voz": "en-US-JennyNeural", "velocidad": "+5%", "tono": "-1Hz"}
+                CONFIG_VOZ_ACTUAL = VOZ_FIJA
+            
+            if "thumbnail_prompt" not in result:
+                result["thumbnail_prompt"] = "Bitcoin dramatic lighting, yellow and red on black, space for text"
+            
+            if "dynamic_hashtags" not in result:
+                result["dynamic_hashtags"] = ""
+            
+            for seg in result.get("segments", []):
+                if not seg.get("image_prompt") or len(seg["image_prompt"].split()) < 5:
+                    seg["image_prompt"] = f"cinematic financial scene about {tema_elegido[:50]}, neon lighting, hyperrealistic, 8k, no people, no text"
+                if "timestamp" not in seg:
+                    seg["timestamp"] = "0:00"
+            
+            return result, tema_elegido, idea.get("description", "Financial analysis")
+        except Exception as e:
+            print(f"❌ Attempt {intento+1}/3 failed: {e}")
+            if intento < 2:
+                time.sleep(10)
+    
+    print("❌ Error generating script after 3 attempts")
+    sys.exit(1)
+
+# ================================================================
 #  MONTAR VIDEO LARGO CON EFECTOS
 # ================================================================
 def montar_video_largo(recursos, fondo_path, salida="largo_capital_en.mp4", capitulos=None):
@@ -1140,7 +1189,7 @@ def montar_video_largo(recursos, fondo_path, salida="largo_capital_en.mp4", capi
                 video_clip = video_clip.resize(lambda t: 1 + 0.015 * t)
             
         except Exception as e:
-            print(f"⚠️ Failed image {i}: {e}")
+            print(f"️ Failed image {i}: {e}")
             img_path = generar_fondo_solido()
             video_clip = ImageClip(img_path, duration=duracion).resize(lambda t: 1 + 0.015 * t)
         
@@ -1208,7 +1257,7 @@ def subir_a_youtube(video_path, titulo, etiquetas_str, descripcion, miniatura_pa
         creds = Credentials.from_authorized_user_info(YOUTUBE_USER_TOKEN)
         youtube = build("youtube", "v3", credentials=creds)
     except Exception as e:
-        print(f" Error authenticating: {e}")
+        print(f"❌ Error authenticating: {e}")
         sys.exit(1)
     
     tags = sanitizar_tags(etiquetas_str)
@@ -1230,7 +1279,7 @@ def subir_a_youtube(video_path, titulo, etiquetas_str, descripcion, miniatura_pa
     else:
         hashtags_final = hashtags_fijos
     
-    disclaimer = "\n\n⚠️ IMPORTANT NOTICE: This content is for educational purposes only and does not constitute financial, legal, or investment advice."
+    disclaimer = "\n\n️ IMPORTANT NOTICE: This content is for educational purposes only and does not constitute financial, legal, or investment advice."
     descripcion_final = f"{descripcion}\n\n{hashtags_final}\n{disclaimer}"
     
     body = {
@@ -1261,12 +1310,12 @@ def subir_a_youtube(video_path, titulo, etiquetas_str, descripcion, miniatura_pa
             youtube.thumbnails().set(videoId=video_id, media_body=media_thumb).execute()
             print("✅ Professional thumbnail uploaded")
         except Exception as e:
-            print(f"⚠️ Error uploading thumbnail: {e}")
+            print(f"️ Error uploading thumbnail: {e}")
     
     return video_id
 
 # ================================================================
-# 🧹 LIMPIEZA
+#  LIMPIEZA
 # ================================================================
 def limpiar_archivos_temporales():
     import glob
@@ -1286,17 +1335,46 @@ def limpiar_archivos_temporales():
     print("✅ Cleanup completed")
 
 # ================================================================
+# 📄 INICIALIZAR ARCHIVOS JSON
+# ================================================================
+def inicializar_archivos_json():
+    """Crear archivos JSON si no existen"""
+    archivos_needed = {
+        "temas_largos_publicados.json": {"temas": []},
+        "temas_largos_en_publicados.json": {"temas": []},
+        "titulos_capital_largos_publicados.json": {"titulos": []},
+        "titulos_capital_largos_en_publicados.json": {"titulos": []},
+        "estado_capital_largos.json": {"ultimo_fondo": None, "publicaciones_hoy": None},
+        "estado_capital_largos_en.json": {"ultimo_fondo": None, "publicaciones_hoy": None},
+        "trends_semanal_largos.json": {"trending_topics": [], "best_topic_this_week": ""}
+    }
+    
+    for archivo, contenido_default in archivos_needed.items():
+        if not os.path.exists(archivo):
+            print(f" Creating missing file: {archivo}")
+            with open(archivo, "w", encoding="utf-8") as f:
+                json.dump(contenido_default, f, indent=2, ensure_ascii=False)
+
+# ================================================================
 # 🎯 MAIN
 # ================================================================
 def main():
+    global _used_image_urls
+    _used_image_urls = set()  # RESETEAR AL INICIO DE CADA VIDEO
+    
+    # INICIALIZAR ARCHIVOS JSON
+    inicializar_archivos_json()
+    
     print("="*60)
     print("🎬 Capital Minds - LONG VIDEO BOT (IMPROVED)")
     print("   ✓ Viral title formulas")
     print("   ✓ High-retention script structure")
-    print("   ✓ High-CTR thumbnails (yellow on black)")
+    print("   ✓ High-CTR thumbnails (gold on black)")
     print("   ✓ Dynamic zoom effects")
     print("   ✓ Visual chapters for retention")
     print("   ✓ Trending topics analysis")
+    print("   ✓ 5 image attempts with 6s delay")
+    print("   ✓ Duplicate image prevention")
     print("="*60)
 
     tz_mexico = ZoneInfo("America/Mexico_City")
@@ -1343,7 +1421,7 @@ def main():
     paleta_video = random.choice(PALETAS_VIDEO)
     print(f"🎨 Color palette for this video: {paleta_video}")
     
-    print(" Generating viral video idea...")
+    print("💡 Generating viral video idea...")
     idea_data = generar_idea_video_largo(tipo, fecha_formateada, trends_data)
     if idea_data and "best_idea" in idea_data:
         idea = idea_data["best_idea"]
@@ -1363,8 +1441,8 @@ def main():
     prompt_miniatura = guion.get("thumbnail_prompt", "")
     dynamic_hashtags = guion.get("dynamic_hashtags", "")
     
-    print(f"️ Title: {titulo}")
-    print(f"🏷️ Dynamic hashtags: {dynamic_hashtags}")
+    print(f"🏷️ Title: {titulo}")
+    print(f"️ Dynamic hashtags: {dynamic_hashtags}")
     
     capitulos = []
     for seg in segmentos:
@@ -1374,18 +1452,31 @@ def main():
         })
     
     # Generar imágenes
-    print("\n🖼️ Generating segment-specific images via Pexels...")
+    print("\n️ Generating segment-specific images via Pexels...")
     imagenes_generadas = []
     for idx, seg in enumerate(segmentos):
         print(f"🎬 Segment {idx+1}/{len(segmentos)} - {seg.get('block', '')}")
         prompt_img = seg.get("image_prompt", "")
+        bloque = seg.get("block", "")
         print(f"   📝 Prompt: {prompt_img[:120]}...")
-        img_url = generar_imagen_horizontal(prompt_img, tema=tema, intentos=3)
+        
+        # 5 intentos con 6 segundos de espera
+        img_url = None
+        for intento in range(5):
+            img_url = generar_imagen_horizontal(prompt_img, tema=tema, bloque=bloque, intentos=1)
+            if img_url:
+                print(f"   ✅ Image found on attempt {intento+1}")
+                break
+            if intento < 4:
+                print(f"   ⏳ Waiting 6 seconds...")
+                time.sleep(6)
+        
         imagenes_generadas.append(img_url)
         if img_url:
             print(f"   ✅ Image found successfully.")
         else:
-            print(f"   ❌ Failed to find image.")
+            print(f"   ❌ Failed to find image after 5 attempts.")
+        
         time.sleep(2)
 
     # Reutilizar imágenes para fallos
@@ -1410,10 +1501,10 @@ def main():
                 print(f"   🖼️ Segment {idx+1}: using solid background")
 
     # Generar audio y recursos
-    print("\n Generating audio and building resources...")
+    print("\n🎵 Generating audio and building resources...")
     recursos = []
     for idx, seg in enumerate(segmentos):
-        print(f"🎬 Generating audio for segment {idx+1}/{len(segmentos)}")
+        print(f" Generating audio for segment {idx+1}/{len(segmentos)}")
         audio_path = generar_audio(seg["text"], idx)
         if not audio_path:
             continue
@@ -1464,7 +1555,7 @@ if __name__ == "__main__":
     try:
         main()
     except Exception as e:
-        print(f" Fatal error: {e}")
+        print(f"❌ Fatal error: {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)
