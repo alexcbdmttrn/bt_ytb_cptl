@@ -1,5 +1,5 @@
 import asyncio
-from datetime import datetime, timedelta
+from datetime import datetime
 import json
 import os
 import random
@@ -46,6 +46,9 @@ TEMAS_PUBLICADOS_FILE_ES = "temas_shorts_publicados.json"
 
 META_DIARIA_SHORTS = 3
 DIAS_SIN_REPETIR_TEMA = 30
+
+# Variable global para rastrear imágenes usadas y evitar duplicados
+_used_image_urls = set()
 
 # ================================================================
 # VOZ EN INGLÉS (Jenny - US Female)
@@ -99,7 +102,7 @@ def detectar_sujeto_visual(texto_ref):
     return "a cinematic financial scene with glowing charts, coins and data visualizations"
 
 # ================================================================
-# 📊 ANALISIS SEMANAL DE TRENDS CON DEEPSEEK
+# 📊 ANÁLISIS SEMANAL DE TRENDS CON DEEPSEEK
 # ================================================================
 def analizar_trends_semanal():
     """
@@ -141,7 +144,7 @@ Based on current events, these topics are HOT:
 9. Crypto regulation updates
 10. DeFi and staking yields
 
- HIGH-SEARCH-VOLUME KEYWORDS:
+📈 HIGH-SEARCH-VOLUME KEYWORDS:
 - "Bitcoin price" (most searched)
 - "Cryptocurrency"
 - "Crypto news"
@@ -274,7 +277,7 @@ FORMULA 6 - BREAKING NEWS:
 
 REQUIREMENTS:
 ✅ Title: 45-60 characters MAX (mobile optimized)
-✅ Include 1 emoji (🚨📈⚠️💰)
+✅ Include 1 emoji (📈⚠️💰)
 ✅ Create CURIOSITY GAP (don't reveal everything in title)
 ✅ Use POWER WORDS: SHOCKING, WARNING, SECRET, EXPOSED, TRUTH, PROVEN, BREAKING
 ✅ AVOID: Generic titles like "Bitcoin Analysis" or "Market Update"
@@ -341,7 +344,7 @@ def generar_guion_financiero(tipo, idea=None, fecha_actual=None):
     prompt = f"""
 You are a YouTube Shorts SCRIPTWRITER specializing in finance/crypto.
 
- TOPIC: "{tema_elegido}"
+📌 TOPIC: "{tema_elegido}"
 📌 HOOK: "{hook_sugerido}"
 📅 DATE: {fecha_actual}
 
@@ -383,7 +386,7 @@ You are a YouTube Shorts SCRIPTWRITER specializing in finance/crypto.
    - Mix broad and specific
    - Example for Bitcoin: "#Bitcoin #BTC #CryptoNews #BitcoinPrice #Crypto2024"
 
-6️ TITLE OPTIMIZATION:
+6️⃣ TITLE OPTIMIZATION:
    - Keep 50-60 characters
    - Use 1 emoji max
    - Create curiosity gap
@@ -392,7 +395,7 @@ You are a YouTube Shorts SCRIPTWRITER specializing in finance/crypto.
 🚫 TITLES ALREADY PUBLISHED (DO NOT REPEAT):
 {titulos_referencia}
 
-RETURN JSON:
+📤 RETURN JSON:
 {{
     "title": "Optimized title (50-60 chars with emoji)",
     "alternative_title": "Second title for A/B testing",
@@ -514,7 +517,7 @@ RETURN JSON:
             if "dynamic_hashtags" not in data:
                 data["dynamic_hashtags"] = ""
 
-            print(f"   ️ Title: {data['title']} ({len(data['title'])} chars)")
+            print(f"   🏷️ Title: {data['title']} ({len(data['title'])} chars)")
             print(f"   📊 Words: {palabras}")
             return data, tema_elegido, tipo
             
@@ -580,7 +583,7 @@ def sanitizar_tags(tags_str, max_chars=500):
     return result.split(",") if result else []
 
 # ================================================================
-#  MÚSICA CORPORATE
+# 🎵 MÚSICA CORPORATE
 # ================================================================
 FONDOS_DISPONIBLES = [
     "The Ascent.mp3",
@@ -732,14 +735,21 @@ def tema_ya_publicado(tema, dias=30):
     return False
 
 # ================================================================
-# 🖼️ GENERAR IMAGEN VERTICAL (PEXELS API - OPTIMIZADO)
+# 🖼️ GENERAR IMAGEN VERTICAL (PEXELS API - OPTIMIZADO CON 5 INTENTOS)
 # ================================================================
-def generar_imagen_vertical(prompt, tema="", intentos=3):
+def generar_imagen_vertical(prompt, tema="", bloque="", intentos=5):
     """
-    MEJORADO: Keywords específicas que funcionan en Pexels
+    MEJORADO: 5 intentos, modificadores aleatorios y prevención de imágenes duplicadas.
     """
+    global _used_image_urls
     
+    # Mapa de palabras clave base según el bloque del guion
     keyword_map = {
+        "HOOK": "urgent financial crisis red alert",
+        "PROBLEM": "falling stock market crash panic",
+        "DATA": "professional financial data charts glowing",
+        "SOLUTION": "upward trending chart success growth",
+        "CLOSE": "professional finance background subtle",
         "bitcoin": "bitcoin cryptocurrency trading",
         "crash": "stock market crash red chart",
         "gold": "gold bars wealth luxury",
@@ -752,37 +762,47 @@ def generar_imagen_vertical(prompt, tema="", intentos=3):
         "panic": "stress business crisis emergency",
         "success": "success growth profit upward chart",
         "warning": "warning alert danger red emergency",
-        "chart": "financial charts graph trading",
-        "market": "stock market trading floor",
     }
     
-    search_query = ""
+    # 1. Obtener palabra clave base
+    base_query = "finance business stock market"
     prompt_lower = prompt.lower()
     
-    for key, value in keyword_map.items():
-        if key in prompt_lower:
-            search_query = value
-            break
+    # Priorizar el bloque si existe, luego el tema
+    if bloque and bloque in keyword_map:
+        base_query = keyword_map[bloque]
+    else:
+        for key, value in keyword_map.items():
+            if key in prompt_lower:
+                base_query = value
+                break
+
+    # 2. MODIFICADORES ALEATORIOS (Clave para evitar imágenes repetidas)
+    modifiers = [
+        "abstract dark background", "neon glowing lights", "cinematic dramatic lighting",
+        "macro close up detail", "minimalist clean", "vibrant colors high contrast",
+        "futuristic technology", "moody atmospheric"
+    ]
     
-    if not search_query:
-        search_query = "finance business stock market charts"
-    
+    # 3. Lista de consultas a probar (Base + Modificador aleatorio)
     fallback_queries = [
-        search_query,
-        "abstract dark finance background",
-        "stock market trading charts",
-        "cryptocurrency bitcoin technology",
-        "business finance economy",
+        f"{base_query} {random.choice(modifiers)}",
+        f"{base_query} {random.choice(modifiers)}",
+        f"abstract {base_query.split()[0] if base_query else 'finance'} dark",
+        "stock market trading charts neon",
+        "cryptocurrency bitcoin technology"
     ]
     
     for intento in range(intentos):
         current_query = fallback_queries[intento % len(fallback_queries)]
         
-        url = f"https://api.pexels.com/v1/search?query={current_query.replace(' ', '+')}&per_page=5&orientation=portrait"
+        # Usamos page aleatorio para romper el caché de Pexels
+        random_page = random.randint(1, 5)
+        url = f"https://api.pexels.com/v1/search?query={current_query.replace(' ', '+')}&per_page=5&orientation=portrait&page={random_page}"
         headers = {"Authorization": PEXELS_API_KEY}
         
         try:
-            print(f"   🖼️ Pexels search: '{current_query}' (attempt {intento+1})")
+            print(f"   🖼️ Pexels search: '{current_query}' (Intento {intento+1}/{intentos})")
             r = requests.get(url, headers=headers, timeout=30)
             
             if r.status_code == 200:
@@ -790,32 +810,35 @@ def generar_imagen_vertical(prompt, tema="", intentos=3):
                 if data.get("photos") and len(data["photos"]) > 0:
                     photos = data["photos"][:5]
                     
-                    best_photo = None
-                    best_score = 0
-                    
                     for photo in photos:
-                        score = 0
-                        if photo.get("src", {}).get("portrait"):
-                            score += 10
-                        if photo.get("avg_color") and photo["avg_color"].lower() in ["#1a1a1a", "#2d2d2d", "#000000", "#1c1c1c"]:
-                            score += 5
-                        if score > best_score:
-                            best_score = score
-                            best_photo = photo
-                    
-                    if best_photo:
-                        img_url = best_photo["src"].get("portrait") or best_photo["src"].get("original")
-                        print(f"   ✅ Found vertical image: {best_photo.get('photographer', 'Unknown')}")
+                        img_url = photo["src"].get("portrait") or photo["src"].get("original")
+                        
+                        # VERIFICAR SI YA USAMOS ESTA IMAGEN
+                        if img_url in _used_image_urls:
+                            print(f"   ⚠️ Imagen ya usada, buscando otra...")
+                            continue
+                        
+                        # Verificar que tenga buen color de fondo (oscuro para que resalte el texto)
+                        avg_color = photo.get("avg_color", "#000000").lower()
+                        # Aceptamos la imagen si no está en la lista de usadas
+                        _used_image_urls.add(img_url)
+                        print(f"   ✅ Found unique vertical image: {photo.get('photographer', 'Unknown')}")
                         return img_url
                         
         except Exception as e:
-            print(f"   ⚠️ Error: {e}")
+            print(f"   ⚠️ Error de conexión: {e}")
             
+        # PAUSA MÁS LARGA para evitar caché y rate limits
         if intento < intentos - 1:
-            time.sleep(3)
+            print(f"   ⏳ Esperando 6 segundos antes del siguiente intento...")
+            time.sleep(6)
     
+    print(f"   ❌ No se encontraron imágenes únicas tras {intentos} intentos.")
     return None
 
+# ================================================================
+# 🖼️ GENERAR IMAGEN HORIZONTAL PARA MINIATURAS
+# ================================================================
 def generar_imagen_horizontal(prompt, tema="", intentos=3):
     search_query = tema if tema else prompt
     
@@ -898,7 +921,7 @@ def generar_audio(texto, index, intentos_por_voz=2):
 # ================================================================
 # 🎬 GENERAR RECURSOS POR SEGMENTO
 # ================================================================
-def generar_recursos_por_segmento(segmentos_data, paleta_video, titulo, tema="", intentos_imagen=3):
+def generar_recursos_por_segmento(segmentos_data, paleta_video, titulo, tema="", intentos_imagen=5):
     recursos = []
     total = len(segmentos_data)
     last_successful_url = None
@@ -916,12 +939,13 @@ def generar_recursos_por_segmento(segmentos_data, paleta_video, titulo, tema="",
         
         img_url = None
         for intento in range(intentos_imagen):
-            img_url = generar_imagen_vertical(prompt_img, tema=tema, intentos=1)
+            # Pasar el bloque para mejorar la búsqueda
+            img_url = generar_imagen_vertical(prompt_img, tema=tema, bloque=bloque, intentos=1)
             if img_url:
                 print(f"    ✅ Image generated (attempt {intento+1})")
                 last_successful_url = img_url
                 break
-            time.sleep(5)
+            time.sleep(6)  # Pausa de 6 segundos entre intentos
         
         if not img_url:
             if last_successful_url:
@@ -929,8 +953,8 @@ def generar_recursos_por_segmento(segmentos_data, paleta_video, titulo, tema="",
                 img_url = last_successful_url
             else:
                 print(f"    ⚠️ No previous image. Retrying...")
-                time.sleep(5)
-                img_url = generar_imagen_vertical(prompt_img, tema=tema, intentos=1)
+                time.sleep(6)
+                img_url = generar_imagen_vertical(prompt_img, tema=tema, bloque=bloque, intentos=1)
                 if img_url:
                     last_successful_url = img_url
                 else:
@@ -963,8 +987,8 @@ def generar_recursos_por_segmento(segmentos_data, paleta_video, titulo, tema="",
         })
         
         if idx < total - 1:
-            print(f"   ⏳ Waiting 5 seconds...")
-            time.sleep(5)
+            print(f"   ⏳ Waiting 6 seconds...")
+            time.sleep(6)
     
     return recursos
 
@@ -1012,7 +1036,7 @@ def agregar_subtitulos_con_pil(imagen_path, texto, salida_path):
                 font = ImageFont.truetype("arial.ttf", 55)
             except:
                 font = ImageFont.load_default()
-                print("   ️ Using default font")
+                print("   ⚠️ Using default font")
         
         if not texto:
             img.save(salida_path)
@@ -1087,13 +1111,26 @@ def obtener_ruta_fuente():
     return None
 
 # ================================================================
-# ️ MINIATURA PROFESIONAL HIGH-CTR
+# 🖼️ MINIATURA PROFESIONAL HIGH-CTR (ESPECÍFICA PARA SHORTS)
 # ================================================================
 def crear_miniatura_profesional(prompt_miniatura, texto_portada, salida="miniatura_short_en.jpg"):
+    """
+    MINIATURA PARA SHORTS - Vertical 9:16 style adaptado a 16:9
+    Más dinámica, colores más intensos, texto MÁS GRANDE
+    """
     try:
-        print("🖼️ Generating HIGH-CTR thumbnail...")
+        print("🖼️ Generating SHORT thumbnail (high-impact)...")
         
-        fondo_url = generar_imagen_horizontal(prompt_miniatura, tema=texto_portada, intentos=2)
+        # Prompt específico para SHORTS - más dramático
+        prompt_corto = (
+            f"{prompt_miniatura}, "
+            "ultra high contrast, extreme close-up, "
+            "bold neon colors (yellow #FFD700 and red #FF0000), "
+            "dramatic lighting, eye-catching, viral style, "
+            "space for BIG text on right side"
+        )
+        
+        fondo_url = generar_imagen_horizontal(prompt_corto, tema=texto_portada, intentos=2)
         
         if fondo_url and fondo_url.startswith("http"):
             try:
@@ -1104,21 +1141,23 @@ def crear_miniatura_profesional(prompt_miniatura, texto_portada, salida="miniatu
                     f.write(r.content)
             except Exception as e:
                 print(f"⚠️ Error downloading background: {e}. Using solid background.")
-                img_path = generar_fondo_solido(color=(10, 10, 30), ancho=1280, alto=720)
+                img_path = generar_fondo_solido(color=(5, 5, 15), ancho=1280, alto=720)
         else:
-            img_path = generar_fondo_solido(color=(10, 10, 30), ancho=1280, alto=720)
+            img_path = generar_fondo_solido(color=(5, 5, 15), ancho=1280, alto=720)
         
         img = Image.open(img_path)
         img = ImageOps.fit(img, (1280, 720), Image.Resampling.LANCZOS)
         draw = ImageDraw.Draw(img)
         
+        # TEXTO PARA SHORTS - MÁXIMO 3-4 PALABRAS, MÁS GRANDE
         texto = texto_portada.upper().strip()
         palabras = texto.split()
         
-        if len(palabras) > 5:
-            texto = ' '.join(palabras[:5])
+        if len(palabras) > 4:
+            texto = ' '.join(palabras[:4])
             palabras = texto.split()
         
+        # Dividir en 2 líneas máximo
         if len(palabras) > 2:
             mitad = len(palabras) // 2
             lineas = [' '.join(palabras[:mitad+1]), ' '.join(palabras[mitad+1:])]
@@ -1127,8 +1166,9 @@ def crear_miniatura_profesional(prompt_miniatura, texto_portada, salida="miniatu
         
         ruta_fuente = obtener_ruta_fuente()
         
-        size = 150
-        while size >= 80:
+        # FUENTE MÁS GRANDE para SHORTS
+        size = 180  # Más grande que en largos (150)
+        while size >= 100:
             if ruta_fuente:
                 font = ImageFont.truetype(ruta_fuente, size)
             else:
@@ -1139,55 +1179,61 @@ def crear_miniatura_profesional(prompt_miniatura, texto_portada, salida="miniatu
             for linea in lineas:
                 bbox = draw.textbbox((0, 0), linea, font=font)
                 ancho_max = max(ancho_max, bbox[2] - bbox[0])
-                alto_total += bbox[3] - bbox[1] + 15
+                alto_total += bbox[3] - bbox[1] + 20
             
-            if ancho_max <= 1100 and alto_total <= 500:
+            if ancho_max <= 1000 and alto_total <= 450:
                 break
             size -= 10
         
-        alto_linea = size + 15
+        alto_linea = size + 20
         alto_total = alto_linea * len(lineas)
         y_inicio = (720 - alto_total) // 2
         
+        # Sombra negra EXTENDIDA para más contraste
+        offset = 10  # Más que en largos (8)
         for i, linea in enumerate(lineas):
             bbox = draw.textbbox((0, 0), linea, font=font)
             text_w = bbox[2] - bbox[0]
-            text_h = bbox[3] - bbox[1]
-            x = 1280 - text_w - 80
+            x = 1280 - text_w - 60  # Más pegado al borde
             y = y_inicio + i * alto_linea
             
-            offset = 8
-            for dx in range(-offset, offset+1, 2):
-                for dy in range(-offset, offset+1, 2):
+            for dx in range(-offset, offset+1, 3):
+                for dy in range(-offset, offset+1, 3):
                     draw.text((x + dx, y + dy), linea, fill='black', font=font)
             
             draw.text((x, y), linea, fill='black', font=font)
         
+        # Texto AMARILLO MÁS BRILLANTE para SHORTS
         for i, linea in enumerate(lineas):
             bbox = draw.textbbox((0, 0), linea, font=font)
             text_w = bbox[2] - bbox[0]
-            x = 1280 - text_w - 80
+            x = 1280 - text_w - 60
             y = y_inicio + i * alto_linea
             
-            draw.text((x, y), linea, fill=(255, 215, 0), font=font)
-            draw.text((x-1, y), linea, fill=(255, 230, 100), font=font)
-            draw.text((x+1, y), linea, fill=(255, 230, 100), font=font)
+            # Amarillo más intenso
+            draw.text((x, y), linea, fill=(255, 255, 0), font=font)  # #FFFF00 vs #FFD700
+            draw.text((x-2, y), linea, fill=(255, 240, 50), font=font)
+            draw.text((x+2, y), linea, fill=(255, 240, 50), font=font)
         
-        draw.rectangle([(1200, 50), (1260, 670)], outline=(255, 0, 0), width=4)
+        # Borde ROJO MÁS GRUESO para SHORTS
+        draw.rectangle([(1180, 40), (1270, 680)], outline=(255, 50, 50), width=6)  # Más grueso
+        
+        # EFECTO DE BRILLO adicional para SHORTS
+        draw.rectangle([(1190, 50), (1260, 670)], outline=(255, 200, 0), width=2)
         
         img.save(salida, quality=95)
-        print(f"✅ High-CTR thumbnail created: {salida}")
-        print(f"   Text: '{texto}'")
-        print(f"   Colors: Yellow (#FFD700) on dark background with red accent")
+        print(f"✅ SHORT thumbnail created: {salida}")
+        print(f"   Text: '{texto}' (LARGER, BRIGHTER)")
+        print(f"   Colors: Bright Yellow (#FFFF00) with THICK red border")
         return salida
     except Exception as e:
-        print(f"⚠️ Error in thumbnail: {e}")
+        print(f"⚠️ Error in SHORT thumbnail: {e}")
         import traceback
         traceback.print_exc()
         return None
 
 # ================================================================
-# 🎥 MONTAR VIDEO SHORTS CON EFECTOS DINÁMICOS
+#  MONTAR VIDEO SHORTS CON EFECTOS DINÁMICOS
 # ================================================================
 def montar_video_shorts(recursos, fondo_path, salida="short_capital_en.mp4"):
     if not recursos:
@@ -1224,7 +1270,10 @@ def montar_video_shorts(recursos, fondo_path, salida="short_capital_en.mp4"):
         
         video_clip = ImageClip(img_path).set_duration(duracion)
         
+        # EFECTOS ESPECIALES POR BLOQUE
         if bloque == "HOOK" or i == 0:
+            # PRIMEROS 3 SEGUNDOS: EFECTO DRAMÁTICO
+            # Zoom rápido IN (de 1.3x a 1.0x en 0.5s)
             video_clip = video_clip.resize(lambda t: 1.3 - 0.6 * min(t/0.5, 1.0))
             
             if duracion > 3:
@@ -1234,15 +1283,19 @@ def montar_video_shorts(recursos, fondo_path, salida="short_capital_en.mp4"):
             print(f"   🎬 HOOK: Fast zoom effect applied (0-3s)")
             
         elif bloque == "PROBLEM" or i == 1:
+            # Transición slide left
             video_clip = video_clip.resize(lambda t: 1.0 + 0.02 * t)
             
         elif bloque == "DATA":
+            # Zoom lento y constante
             video_clip = video_clip.resize(lambda t: 1.0 + 0.01 * t)
             
         elif bloque == "SOLUTION":
+            # Zoom out (optimismo)
             video_clip = video_clip.resize(lambda t: 1.0 - 0.02 * min(t/5, 0.1))
             
         else:
+            # Zoom suave por defecto
             video_clip = video_clip.resize(lambda t: 1 + 0.02 * t)
         
         clips_video.append(video_clip)
@@ -1254,6 +1307,7 @@ def montar_video_shorts(recursos, fondo_path, salida="short_capital_en.mp4"):
             silencio = AudioClip(lambda t: 0, duration=duracion)
             clips_audio.append(silencio)
     
+    # CONCATENAR AUDIO CON PAUSAS
     PAUSA = 0.3
     audio_final_parts = []
     for i, aud in enumerate(clips_audio):
@@ -1264,9 +1318,11 @@ def montar_video_shorts(recursos, fondo_path, salida="short_capital_en.mp4"):
     audio_narracion = concatenate_audioclips(audio_final_parts)
     duracion_total = audio_narracion.duration
     
+    # CONCATENAR VIDEO
     video = concatenate_videoclips(clips_video, method="compose")
     video = video.set_duration(duracion_total)
     
+    # AGREGAR MÚSICA DE FONDO
     if fondo_path and os.path.exists(fondo_path):
         try:
             fondo_clip = AudioFileClip(fondo_path)
@@ -1317,8 +1373,9 @@ def subir_a_youtube(video_path, titulo, etiquetas_str, gancho, contexto, hashtag
             tags = tags[:5]
             tags_str_final = ",".join(tags)
     
-    print(f"📝 Final tags ({len(tags)}): {tags_str_final}")
+    print(f" Final tags ({len(tags)}): {tags_str_final}")
     
+    # Hashtags fijos + dinámicos
     hashtags_fijos = "#Shorts #Finance #Investing"
     if dynamic_hashtags:
         dynamic_hashtags = sanitizar_hashtags(dynamic_hashtags, max_tags=6)
@@ -1332,7 +1389,7 @@ def subir_a_youtube(video_path, titulo, etiquetas_str, gancho, contexto, hashtag
 
 🔴 SUBSCRIBE to the channel: {CANAL_LINK}
 
-📖 {fuente}
+ {fuente}
 
 {hashtags_final}
 
@@ -1390,9 +1447,36 @@ def limpiar_archivos_temporales():
     print("✅ Cleanup completed")
 
 # ================================================================
+# 📄 INICIALIZAR ARCHIVOS JSON
+# ================================================================
+def inicializar_archivos_json():
+    """Crear archivos JSON si no existen"""
+    archivos_needed = {
+        "temas_shorts_publicados.json": {"temas": []},
+        "temas_shorts_en_publicados.json": {"temas": []},
+        "titulos_capital_shorts_publicados.json": {"titulos": []},
+        "titulos_capital_shorts_en_publicados.json": {"titulos": []},
+        "estado_capital_shorts.json": {"ultimo_fondo": None, "publicaciones_hoy": None},
+        "estado_capital_shorts_en.json": {"ultimo_fondo": None, "publicaciones_hoy": None},
+        "trends_semanal.json": {"trending_topics": [], "best_topic_this_week": ""}
+    }
+    
+    for archivo, contenido_default in archivos_needed.items():
+        if not os.path.exists(archivo):
+            print(f"📄 Creating missing file: {archivo}")
+            with open(archivo, "w", encoding="utf-8") as f:
+                json.dump(contenido_default, f, indent=2, ensure_ascii=False)
+
+# ================================================================
 # 🎯 MAIN
 # ================================================================
 def main():
+    global _used_image_urls
+    _used_image_urls = set()  # RESETEAR AL INICIO DE CADA VIDEO
+    
+    # INICIALIZAR ARCHIVOS JSON
+    inicializar_archivos_json()
+    
     print("="*60)
     print("🎬 Capital Minds - SHORTS BOT (IMPROVED)")
     print("   ✓ Viral title formulas")
@@ -1400,20 +1484,22 @@ def main():
     print("   ✓ High-CTR thumbnails (yellow on black)")
     print("   ✓ Dynamic zoom effects")
     print("   ✓ Trending topics analysis")
+    print("   ✓ 5 image attempts with 6s delay")
+    print("   ✓ Duplicate image prevention")
     print("="*60)
 
     tz_mexico = ZoneInfo("America/Mexico_City")
     fecha_actual = datetime.now(tz_mexico)
     fecha_formateada = fecha_actual.strftime("%B %d, %Y")
-    print(f" Current date: {fecha_formateada}")
+    print(f"📅 Current date: {fecha_formateada}")
     print("="*60)
     
     if not YOUTUBE_USER_TOKEN:
-        print(" YOUTUBE_USER_TOKEN_CAPITAL missing")
+        print("❌ YOUTUBE_USER_TOKEN_CAPITAL missing")
         sys.exit(1)
     
     if not DEEPSEEK_API_KEY:
-        print(" DEEPSEEK_API_KEY missing")
+        print("❌ DEEPSEEK_API_KEY missing")
         sys.exit(1)
     
     if not PEXELS_API_KEY:
@@ -1424,6 +1510,20 @@ def main():
     if publicadas >= META_DIARIA_SHORTS:
         print(f"✅ Already published {META_DIARIA_SHORTS} shorts today. Exiting.")
         sys.exit(0)
+    
+    # Analizar trends semanales (si es medianoche o no existe el archivo)
+    trends_data = None
+    try:
+        with open(TRENDS_FILE, "r", encoding="utf-8") as f:
+            trends_data = json.load(f)
+            print(f"   📈 Using trending topic: {trends_data.get('best_topic_this_week', 'N/A')}")
+    except:
+        # Si no existe o hay error, generar nuevo análisis
+        if fecha_actual.hour < 2:  # Ejecutar a medianoche
+            print("📊 Generating weekly trends analysis...")
+            trends_data = analizar_trends_semanal()
+        else:
+            print("️ No trends file found, continuing without it")
     
     if publicadas == 0:
         tipo = "news"
@@ -1438,15 +1538,7 @@ def main():
     fondo_path = seleccionar_fondo_disponible(estado)
     
     paleta_video = random.choice(PALETAS_VIDEO)
-    print(f"🎨 Color palette for this video: {paleta_video}")
-    
-    trends_data = None
-    try:
-        with open(TRENDS_FILE, "r", encoding="utf-8") as f:
-            trends_data = json.load(f)
-            print(f"   📈 Using trending topic: {trends_data.get('best_topic_this_week', 'N/A')}")
-    except:
-        pass
+    print(f" Color palette for this video: {paleta_video}")
     
     print("💡 Generating viral video idea...")
     idea_data = generar_idea_video(tipo, fecha_formateada, trends_data)
@@ -1466,9 +1558,13 @@ def main():
     palabras_portada = guion.get("cover_words", "INSIGHT")
     prompt_miniatura = guion.get("thumbnail_prompt", "")
     
+    # Extraer textos de segmentos
+    segmentos = [seg["text"] for seg in segments_data]
+    
     print(f"🏷️ Title: {titulo}")
     print(f"🏷️ Dynamic hashtags: {dynamic_hashtags}")
     
+    # Generar recursos con prompts de DeepSeek
     recursos = generar_recursos_por_segmento(
         segments_data, paleta_video, titulo, tema=tema_elegido
     )
@@ -1479,6 +1575,7 @@ def main():
     video_path = montar_video_shorts(recursos, fondo_path, "short_capital_en.mp4")
     print(f"🎬 Video assembled: {video_path}")
     
+    # Miniatura adaptada
     miniatura_path = None
     if prompt_miniatura:
         print("🖼️ Generating professional thumbnail...")
@@ -1495,7 +1592,7 @@ def main():
         etiquetas_str=guion["tags"],
         gancho=guion["hook_description"],
         contexto=guion["context_description"],
-        hashtags="",
+        hashtags="",  # Se construye internamente
         fuente=guion.get("source_story", "Based on financial analysis"),
         miniatura_path=miniatura_path,
         dynamic_hashtags=dynamic_hashtags
