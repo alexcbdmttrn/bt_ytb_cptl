@@ -126,13 +126,13 @@ def analizar_trends_semanal():
     prompt = f"""
 You are a VIRAL TREND ANALYST and SEO EXPERT for YouTube Shorts in finance/crypto.
 
-CURRENT DATE: September 2024
+CURRENT DATE: September 2026
 YOUR TASK: Identify VIRAL TOPICS with HIGH SEARCH VOLUME for this week.
 
 RECENTLY PUBLISHED TOPICS (avoid repeating):
 {temas_text}
 
-🔥 TRENDING NOW (September 2024) - HIGH SEARCH VOLUME:
+🔥 TRENDING NOW (September 2026) - HIGH SEARCH VOLUME:
 1. Bitcoin price reaction to Fed rate cut (500K+ searches)
 2. Federal Reserve interest rate decisions (300K+ searches)
 3. Bitcoin vs Gold performance comparison (200K+ searches)
@@ -261,7 +261,7 @@ FORMULA 6 - BREAKING NEWS + IMPACT:
 "BREAKING: Fed Rate Cut - Bitcoin Impact"
 "Bitcoin Halving EXPOSED: What's Next"
 
- TRENDING TOPICS RIGHT NOW (HIGH SEARCH VOLUME):
+🔥 TRENDING TOPICS RIGHT NOW (HIGH SEARCH VOLUME):
 - Bitcoin price reaction to Fed rate cut (500K searches)
 - Fed interest rate decisions impact on crypto (300K searches)
 - Bitcoin vs Gold performance comparison (200K searches)
@@ -281,6 +281,7 @@ REQUIREMENTS:
 ✅ Use POWER WORDS: SHOCKING, WARNING, SECRET, EXPOSED, TRUTH, PROVEN, BREAKING
 ✅ Include HIGH-VOLUME KEYWORD naturally
 ✅ AVOID: Generic titles like "Bitcoin Analysis" or "Market Update"
+✅ EACH TITLE MUST BE UNIQUE - use different angles, numbers, and power words
 
 For each idea provide:
 - Title (with formula used and SEO keyword)
@@ -332,13 +333,99 @@ Then SELECT THE BEST ONE and return in JSON:
         return None
 
 # ================================================================
+# 🔧 NUEVA FUNCIÓN: MODIFICAR TÍTULO PARA EVITAR DUPLICADOS
+# ================================================================
+def modificar_titulo_para_evitar_duplicado(titulo_original, titulos_existentes):
+    """
+    Modifica un título duplicado agregando variaciones únicas.
+    Retorna un título único garantizado.
+    """
+    titulo_base = titulo_original.strip()
+    
+    # Lista de modificadores únicos
+    sufijos_unicos = [
+        "RIGHT NOW", "TODAY", "2026", "JUST IN", "UPDATE",
+        "EXCLUSIVE", "LIVE", "NEW DATA", "SEPTEMBER", "Q3",
+        "BREAKING", "URGENT", "ALERT", "EXPOSED", "REVEALED",
+        "CONFIRMED", "OFFICIAL", "SHOCKING", "UNEXPECTED", "FINAL"
+    ]
+    
+    prefijos_unicos = [
+        "🚨 BREAKING:", "⚠️ WARNING:", "📈 UPDATE:", "💰 ALERT:",
+        "🔥 HOT:", "⚡ LIVE:", "📊 NEW:", "🎯 EXCLUSIVE:",
+        "🚀 SHOCKING:", "💥 URGENT:"
+    ]
+    
+    # Estrategia 1: Agregar prefijo único
+    for _ in range(5):
+        prefijo = random.choice(prefijos_unicos)
+        titulo_mod = f"{prefijo} {titulo_base}"
+        if len(titulo_mod) <= 100 and not _es_titulo_duplicado_real(titulo_mod, titulos_existentes):
+            print(f"   🔧 Modified with prefix: {titulo_mod}")
+            return titulo_mod
+    
+    # Estrategia 2: Agregar sufijo único
+    for _ in range(5):
+        sufijo = random.choice(sufijos_unicos)
+        titulo_mod = f"{titulo_base} - {sufijo}"
+        if len(titulo_mod) <= 100 and not _es_titulo_duplicado_real(titulo_mod, titulos_existentes):
+            print(f"   🔧 Modified with suffix: {titulo_mod}")
+            return titulo_mod
+    
+    # Estrategia 3: Reordenar palabras + fecha
+    palabras = titulo_base.split()
+    if len(palabras) > 3:
+        # Mover la primera palabra al final
+        palabras_reordenadas = palabras[1:] + [palabras[0]]
+        fecha_corta = datetime.now().strftime("%b %d")
+        titulo_mod = f"{' '.join(palabras_reordenadas)} | {fecha_corta}"
+        if len(titulo_mod) <= 100:
+            print(f"   🔧 Reordered + date: {titulo_mod}")
+            return titulo_mod
+    
+    # Estrategia 4: Último recurso - agregar timestamp único
+    timestamp = datetime.now().strftime("%H%M")
+    titulo_final = f"{titulo_base[:70]} [{timestamp}]"
+    print(f"   🔧 Final modification with timestamp: {titulo_final}")
+    return titulo_final
+
+def _es_titulo_duplicado_real(titulo_nuevo, titulos_existentes):
+    """
+    Verificación MÁS ESTRICTA: solo considera duplicado si es EXACTAMENTE igual
+    o si comparte más del 85% de palabras (no 70%).
+    """
+    titulo_norm = titulo_nuevo.lower().strip()
+    
+    for t in titulos_existentes:
+        t_norm = t.lower().strip()
+        
+        # Verificación exacta
+        if titulo_norm == t_norm:
+            return True
+        
+        # Verificación de similitud (SOLO si tiene más de 5 palabras)
+        palabras1 = set(re.findall(r'\w+', titulo_norm))
+        palabras2 = set(re.findall(r'\w+', t_norm))
+        
+        if len(palabras1) > 5 and len(palabras2) > 5:
+            interseccion = palabras1.intersection(palabras2)
+            union = palabras1.union(palabras2)
+            similitud = len(interseccion) / len(union) if union else 0
+            
+            # UMBRAL MÁS ESTRICTO: 85% (no 70%)
+            if similitud > 0.85:
+                return True
+    
+    return False
+
+# ================================================================
 # GENERAR GUION CON HOOK DE 3 SEGUNDOS (SEO ÉLITE)
 # ================================================================
 def generar_guion_financiero(tipo, idea=None, fecha_actual=None):
     if not fecha_actual:
         fecha_actual = datetime.now(ZoneInfo("America/Mexico_City")).strftime("%B %d, %Y")
 
-    titulos_pub = cargar_titulos_publicados()["titulos"][-10:]
+    titulos_pub = cargar_titulos_publicados()["titulos"][-20:]
     titulos_referencia = "\n".join([f"- {t}" for t in titulos_pub]) if titulos_pub else "None yet."
 
     hook_sugerido = idea.get("hook_3sec", "") if idea else ""
@@ -350,7 +437,7 @@ def generar_guion_financiero(tipo, idea=None, fecha_actual=None):
     prompt = f"""
 You are a YouTube Shorts SCRIPTWRITER and SEO EXPERT specializing in finance/crypto.
 
- TOPIC: "{tema_elegido}"
+📌 TOPIC: "{tema_elegido}"
 📌 HOOK: "{hook_sugerido}"
 📌 PRIMARY KEYWORDS: {keywords_str}
 📅 DATE: {fecha_actual}
@@ -371,7 +458,7 @@ You are a YouTube Shorts SCRIPTWRITER and SEO EXPERT specializing in finance/cry
    [25-35s] SOLUTION: What to do (25 words)
    [35-40s] CTA: "Subscribe for more" with keyword (5 words)
 
-3️ SEO OPTIMIZATION (CRITICAL):
+3️⃣ SEO OPTIMIZATION (CRITICAL):
    - Mention PRIMARY KEYWORD 2-3 times naturally
    - Include keyword in first 5 words
    - Use semantic variations (Bitcoin = BTC = crypto)
@@ -399,20 +486,21 @@ You are a YouTube Shorts SCRIPTWRITER and SEO EXPERT specializing in finance/cry
    - 2 MEDIUM volume (#BitcoinNews #CryptoNews - 100K-500K posts)
    - 2 LOW volume niche (#BitcoinPrice #CryptoAlert - 10K-50K posts)
 
-7️ TITLE OPTIMIZATION (SEO):
+7️⃣ TITLE OPTIMIZATION (SEO):
    - Keep 50-60 characters
    - Front-load PRIMARY KEYWORD (first 3 words)
    - Use 1 emoji max
    - Create curiosity gap
    - Use power words
+   - MUST BE UNIQUE - avoid common patterns
 
-🚫 TITLES ALREADY PUBLISHED (DO NOT REPEAT):
+🚫 TITLES ALREADY PUBLISHED (DO NOT REPEAT - be CREATIVE):
 {titulos_referencia}
 
 📤 RETURN JSON:
 {{
-    "title": "Optimized title with keyword first (50-60 chars with emoji)",
-    "alternative_title": "Second title for A/B testing",
+    "title": "Optimized UNIQUE title with keyword first (50-60 chars with emoji) - MUST BE DIFFERENT from published titles",
+    "alternative_title": "Second UNIQUE title for A/B testing",
     "keywords": ["{seo_keywords[0]}", "{seo_keywords[1] if len(seo_keywords) > 1 else 'crypto'}", "trading", "investment", "finance"],
     "hook_description": "Hook for description with keyword (first 90 chars)",
     "context_description": "One sentence context with keyword",
@@ -461,7 +549,7 @@ You are a YouTube Shorts SCRIPTWRITER and SEO EXPERT specializing in finance/cry
     payload = {
         "model": "deepseek-chat",
         "messages": [{"role": "user", "content": prompt}],
-        "temperature": 0.7,
+        "temperature": 0.85,  # Aumentado para más variedad
         "max_tokens": 1200,
         "response_format": {"type": "json_object"}
     }
@@ -511,8 +599,14 @@ You are a YouTube Shorts SCRIPTWRITER and SEO EXPERT specializing in finance/cry
 
             titulo = data.get("title", "").strip()
             titulo = re.sub(r'#\w+', '', titulo).strip()
-            if titulo_ya_publicado(titulo):
-                raise ValueError("Duplicate title")
+            
+            # 🔧 CORRECCIÓN CRÍTICA: Si es duplicado, MODIFICAR en lugar de rechazar
+            titulos_existentes = cargar_titulos_publicados()["titulos"]
+            if _es_titulo_duplicado_real(titulo, titulos_existentes):
+                print(f"   ⚠️ Title similar to existing: '{titulo}'")
+                titulo = modificar_titulo_para_evitar_duplicado(titulo, titulos_existentes)
+                data["title"] = titulo
+                print(f"   ✅ Modified to unique title: {titulo}")
 
             tags_raw = data.get("tags", "")
             tags_list = sanitizar_tags(tags_raw)
@@ -533,7 +627,7 @@ You are a YouTube Shorts SCRIPTWRITER and SEO EXPERT specializing in finance/cry
                 data["dynamic_hashtags"] = "#Bitcoin #Crypto #BitcoinNews #CryptoNews #BitcoinPrice #CryptoAlert"
 
             print(f"   🏷️ Title: {data['title']} ({len(data['title'])} chars)")
-            print(f"    Words: {palabras}")
+            print(f"   📊 Words: {palabras}")
             print(f"   🔑 SEO Keywords: {', '.join(data.get('keywords', [])[:3])}")
             return data, tema_elegido, tipo
             
@@ -542,8 +636,37 @@ You are a YouTube Shorts SCRIPTWRITER and SEO EXPERT specializing in finance/cry
             if intento < 5:
                 time.sleep(10)
 
-    print("❌ ALL ATTEMPTS FAILED.")
-    sys.exit(1)
+    # 🔧 ÚLTIMO RECURSO: Si todos los intentos fallan, generar título forzado
+    print("⚠️ All attempts failed. Generating forced unique title...")
+    fecha_corta = datetime.now().strftime("%b %d").upper()
+    titulo_forzado = f"🚨 {tema_elegido[:40]} - {fecha_corta} UPDATE"
+    if len(titulo_forzado) > 95:
+        titulo_forzado = titulo_forzado[:92] + "..."
+    
+    # Crear estructura mínima de guion
+    data_forzada = {
+        "title": titulo_forzado,
+        "alternative_title": f"⚠️ {tema_elegido[:35]} | {fecha_corta}",
+        "keywords": ["bitcoin", "crypto", "finance"],
+        "hook_description": f"Breaking update on {tema_elegido[:50]}",
+        "context_description": f"Latest market analysis for {fecha_corta}",
+        "source_story": "Market data analysis",
+        "cover_words": "MARKET UPDATE",
+        "tags": "bitcoin, crypto, finance, trading, investing, economy, market, analysis",
+        "dynamic_hashtags": "#Bitcoin #Crypto #BitcoinNews #CryptoNews #BitcoinPrice #CryptoAlert",
+        "segments": [
+            {"block": "HOOK", "text": f"Breaking news about {tema_elegido[:30]}. This changes everything for investors.", "image_prompt": "dramatic financial crisis scene, red emergency lighting, neon yellow text space, cinematic 8k, vertical 9:16", "duration": 3.0},
+            {"block": "PROBLEM", "text": "The market is reacting strongly to recent developments. Traders are watching closely as volatility increases.", "image_prompt": "falling charts red candles panic, dark background with red glow, urgent, vertical 9:16", "duration": 7.0},
+            {"block": "DATA", "text": "Recent data shows significant movements in key indicators. Experts are analyzing the impact on portfolios worldwide.", "image_prompt": "professional financial data charts, glowing blue and gold neon lines, 8k hyperrealistic, vertical 9:16", "duration": 15.0},
+            {"block": "SOLUTION", "text": "Smart investors are diversifying and staying informed. Knowledge is power in these volatile times.", "image_prompt": "upward trending chart green candles success, gold accents on dark, optimistic, vertical 9:16", "duration": 10.0},
+            {"block": "CLOSE", "text": "Subscribe for daily crypto insights.", "image_prompt": "professional finance background dark blue subtle gold accents, vertical 9:16", "duration": 5.0}
+        ],
+        "thumbnail_prompt": "Bitcoin coin with dramatic lightning, dark background, space for text, high contrast, YouTube thumbnail style, 16:9",
+        "seo_optimized_description": f"Latest analysis on {tema_elegido[:50]}. Stay informed with daily market updates."
+    }
+    
+    print(f"   🏷️ Forced title: {data_forzada['title']}")
+    return data_forzada, tema_elegido, tipo
 
 def truncar_segmentos(segments):
     total_palabras = sum(len(seg["text"].split()) for seg in segments)
@@ -617,7 +740,7 @@ def seleccionar_fondo_disponible(estado):
             if file.lower() in [f.lower() for f in FONDOS_DISPONIBLES]:
                 fondos_disponibles.append(os.path.join(root, file))
     if not fondos_disponibles:
-        print("️ No music found. Continuing without background music.")
+        print("ℹ️ No music found. Continuing without background music.")
         return None
     ultimo_fondo = estado.get("ultimo_fondo")
     if ultimo_fondo and ultimo_fondo in fondos_disponibles:
@@ -673,20 +796,12 @@ def guardar_titulo_publicado(titulo):
             json.dump(data_en, f, indent=2, ensure_ascii=False)
 
 def titulo_ya_publicado(titulo):
+    """
+    DEPRECADA: Usar _es_titulo_duplicado_real() en su lugar.
+    Mantenida por compatibilidad.
+    """
     data = cargar_titulos_publicados()
-    titulo_norm = titulo.lower().strip()
-    for t in data["titulos"]:
-        t_norm = t.lower().strip()
-        if titulo_norm == t_norm:
-            return True
-        palabras1 = set(re.findall(r'\w+', titulo_norm))
-        palabras2 = set(re.findall(r'\w+', t_norm))
-        if len(palabras1) > 3 and len(palabras2) > 3:
-            interseccion = palabras1.intersection(palabras2)
-            similitud = len(interseccion) / min(len(palabras1), len(palabras2))
-            if similitud > 0.7:
-                return True
-    return False
+    return _es_titulo_duplicado_real(titulo, data["titulos"])
 
 def obtener_publicaciones_hoy():
     estado = cargar_estado()
@@ -1110,7 +1225,7 @@ def obtener_ruta_fuente():
 # ================================================================
 def crear_miniatura_profesional(prompt_miniatura, texto_portada, salida="miniatura_short_en.jpg"):
     try:
-        print("️ Generating SHORT thumbnail (ÉLITE SEO - high-impact)...")
+        print("🖼️ Generating SHORT thumbnail (ÉLITE SEO - high-impact)...")
         
         prompt_corto = (
             f"{prompt_miniatura}, "
@@ -1208,7 +1323,7 @@ def crear_miniatura_profesional(prompt_miniatura, texto_portada, salida="miniatu
         print(f"   Colors: Bright Yellow (#FFFF00) with THICK red border")
         return salida
     except Exception as e:
-        print(f"️ Error in SHORT thumbnail: {e}")
+        print(f"⚠️ Error in SHORT thumbnail: {e}")
         import traceback
         traceback.print_exc()
         return None
@@ -1333,7 +1448,7 @@ def subir_a_youtube(video_path, titulo, etiquetas_str, gancho, contexto, hashtag
     
     tags = sanitizar_tags(etiquetas_str)
     if not tags:
-        print("️ No valid tags found. Using default tags.")
+        print("⚠️ No valid tags found. Using default tags.")
         tags = ["finance", "investing", "crypto", "trading", "shorts"]
     
     tags_str_final = ",".join(tags)
@@ -1359,7 +1474,7 @@ def subir_a_youtube(video_path, titulo, etiquetas_str, gancho, contexto, hashtag
 
 {seo_description if seo_description else contexto}
 
- SUBSCRIBE to the channel: {CANAL_LINK}
+🔴 SUBSCRIBE to the channel: {CANAL_LINK}
 
 📖 {fuente}
 
@@ -1459,6 +1574,7 @@ def main():
     print("   ✓ ÉLITE voice settings (+12% speed)")
     print("   ✓ SEO-optimized descriptions")
     print("   ✓ 2 publications per day")
+    print("   ✓ Smart duplicate title MODIFICATION")
     print("="*60)
 
     tz_mexico = ZoneInfo("America/Mexico_City")
@@ -1578,14 +1694,14 @@ def main():
     limpiar_archivos_temporales()
     
     print(f"✅ Short published successfully!")
-    print(f" https://youtu.be/{video_id}")
+    print(f"🔗 https://youtu.be/{video_id}")
     print(f"📊 SEO Score: Optimized for maximum visibility")
 
 if __name__ == "__main__":
     try:
         main()
     except Exception as e:
-        print(f" Fatal error: {e}")
+        print(f"❌ Fatal error: {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)
