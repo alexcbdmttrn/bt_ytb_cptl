@@ -44,25 +44,24 @@ ESTADO_FILE_ES = "estado_capital_shorts.json"
 TITULOS_FILE_ES = "titulos_capital_shorts_publicados.json"
 TEMAS_PUBLICADOS_FILE_ES = "temas_shorts_publicados.json"
 
-META_DIARIA_SHORTS = 2  # CAMBIADO: De 3 a 2 publicaciones diarias
+META_DIARIA_SHORTS = 2
 DIAS_SIN_REPETIR_TEMA = 30
 
-# Variable global para rastrear imágenes usadas
 _used_image_urls = set()
 
 # ================================================================
-# 🎙️ VOZ ÉLITE - CONFIGURACIÓN OPTIMIZADA
+# VOZ ÉLITE - CONFIGURACIÓN OPTIMIZADA
 # ================================================================
 VOZ_FIJA = {
     "voz": "en-US-JennyNeural",
-    "velocidad": "+12%",  # Más rápido para retención
-    "tono": "+2Hz",        # Ligeramente más agudo = más energía
-    "volumen": "+10%"      # Más volumen = más impacto
+    "velocidad": "+12%",
+    "tono": "+2Hz",
+    "volumen": "+10%"
 }
 CONFIG_VOZ_ACTUAL = VOZ_FIJA
 
 # ================================================================
-#  PALETAS DE COLOR PSICOLÓGICAS (ÉLITE)
+# PALETAS DE COLOR PSICOLÓGICAS (ÉLITE)
 # ================================================================
 PALETAS_VIDEO = [
     "electric cyan #00FFFF and gold #FFD700 neon on dark navy #0A0E27",
@@ -107,12 +106,9 @@ def detectar_sujeto_visual(texto_ref):
     return "a cinematic financial scene with glowing charts, coins and data visualizations"
 
 # ================================================================
-# 📊 ANÁLISIS SEMANAL DE TRENDS CON DEEPSEEK (ÉLITE SEO)
+# ANÁLISIS SEMANAL DE TRENDS CON DEEPSEEK (ÉLITE SEO)
 # ================================================================
 def analizar_trends_semanal():
-    """
-    Usa DeepSeek para analizar temas trending con enfoque SEO avanzado
-    """
     temas_pub = cargar_temas_publicados()
     
     hoy = datetime.now(ZoneInfo("America/Mexico_City")).date()
@@ -125,6 +121,8 @@ def analizar_trends_semanal():
         except:
             continue
     
+    temas_text = "\n".join(temas_recientes[:10]) if temas_recientes else "None"
+    
     prompt = f"""
 You are a VIRAL TREND ANALYST and SEO EXPERT for YouTube Shorts in finance/crypto.
 
@@ -132,7 +130,7 @@ CURRENT DATE: September 2024
 YOUR TASK: Identify VIRAL TOPICS with HIGH SEARCH VOLUME for this week.
 
 RECENTLY PUBLISHED TOPICS (avoid repeating):
-{chr(10).join(temas_recientes[:10]) if temas_recientes else "None"}
+{temas_text}
 
 🔥 TRENDING NOW (September 2024) - HIGH SEARCH VOLUME:
 1. Bitcoin price reaction to Fed rate cut (500K+ searches)
@@ -146,7 +144,7 @@ RECENTLY PUBLISHED TOPICS (avoid repeating):
 9. Crypto regulation updates (100K+ searches)
 10. DeFi and staking yields (90K+ searches)
 
- HIGH-SEARCH-VOLUME KEYWORDS (SEO OPTIMIZED):
+📈 HIGH-SEARCH-VOLUME KEYWORDS (SEO OPTIMIZED):
 PRIMARY: "Bitcoin price" (1.2M/mo), "Cryptocurrency" (823K/mo), "Crypto news" (450K/mo)
 SECONDARY: "Bitcoin crash" (165K/mo), "Fed rate cut" (135K/mo), "Gold price" (301K/mo)
 LONG-TAIL: "Bitcoin price prediction today" (45K/mo), "Is Bitcoin a good investment" (33K/mo)
@@ -173,8 +171,7 @@ Return in JSON:
             "best_format": "news",
             "hook": "Bitcoin just exploded after Fed announcement...",
             "seo_keywords": ["Bitcoin price", "Fed rate cut", "crypto news", "Bitcoin rally"]
-        }},
-        ...
+        }}
     ],
     "topics_to_avoid": ["topic1", "topic2"],
     "best_topic_this_week": "Bitcoin Fed Rate Cut Reaction",
@@ -216,17 +213,16 @@ Return in JSON:
         return None
 
 # ================================================================
-# 🎬 GENERAR IDEA DE VIDEO CON FÓRMULAS VIRALES (SEO ÉLITE)
+# GENERAR IDEA DE VIDEO CON FÓRMULAS VIRALES (SEO ÉLITE)
 # ================================================================
 def generar_idea_video(tipo, fecha_actual, trends_data=None):
-    """
-    PROMPT ÉLITE SEO: Enfocado en viralidad, CTR alto y SEO
-    """
     tema_sugerido = ""
     seo_keywords = []
     if trends_data and "best_topic_this_week" in trends_data:
         tema_sugerido = f"SUGGESTED TOPIC: {trends_data['best_topic_this_week']}\n"
         seo_keywords = trends_data.get("high_volume_keywords", [])
+    
+    keywords_text = ", ".join(seo_keywords[:5]) if seo_keywords else "Bitcoin price, crypto news, cryptocurrency"
     
     prompt = f"""
 You are a VIRAL CONTENT STRATEGIST and SEO EXPERT for YouTube Shorts in finance/crypto.
@@ -237,7 +233,7 @@ You are a VIRAL CONTENT STRATEGIST and SEO EXPERT for YouTube Shorts in finance/
 {tema_sugerido}
 
 🎯 SEO KEYWORDS TO INCLUDE (HIGH VOLUME):
-{', '.join(seo_keywords[:5]) if seo_keywords else "Bitcoin price, crypto news, cryptocurrency"}
+{keywords_text}
 
 VIRAL TITLE FORMULAS (SEO OPTIMIZED):
 
@@ -265,7 +261,7 @@ FORMULA 6 - BREAKING NEWS + IMPACT:
 "BREAKING: Fed Rate Cut - Bitcoin Impact"
 "Bitcoin Halving EXPOSED: What's Next"
 
-🔥 TRENDING TOPICS RIGHT NOW (HIGH SEARCH VOLUME):
+ TRENDING TOPICS RIGHT NOW (HIGH SEARCH VOLUME):
 - Bitcoin price reaction to Fed rate cut (500K searches)
 - Fed interest rate decisions impact on crypto (300K searches)
 - Bitcoin vs Gold performance comparison (200K searches)
@@ -336,7 +332,7 @@ Then SELECT THE BEST ONE and return in JSON:
         return None
 
 # ================================================================
-# 📝 GENERAR GUION CON HOOK DE 3 SEGUNDOS (SEO ÉLITE)
+# GENERAR GUION CON HOOK DE 3 SEGUNDOS (SEO ÉLITE)
 # ================================================================
 def generar_guion_financiero(tipo, idea=None, fecha_actual=None):
     if not fecha_actual:
@@ -349,12 +345,14 @@ def generar_guion_financiero(tipo, idea=None, fecha_actual=None):
     tema_elegido = idea["title"] if idea else "Bitcoin/Fed/Gold Analysis"
     seo_keywords = idea.get("seo_keywords", ["Bitcoin", "crypto", "price"]) if idea else ["Bitcoin", "crypto"]
     
+    keywords_str = ", ".join(seo_keywords[:3])
+    
     prompt = f"""
 You are a YouTube Shorts SCRIPTWRITER and SEO EXPERT specializing in finance/crypto.
 
-📌 TOPIC: "{tema_elegido}"
+ TOPIC: "{tema_elegido}"
 📌 HOOK: "{hook_sugerido}"
-📌 PRIMARY KEYWORDS: {', '.join(seo_keywords[:3])}
+📌 PRIMARY KEYWORDS: {keywords_str}
 📅 DATE: {fecha_actual}
 
 🎬 CRITICAL RULES:
@@ -373,7 +371,7 @@ You are a YouTube Shorts SCRIPTWRITER and SEO EXPERT specializing in finance/cry
    [25-35s] SOLUTION: What to do (25 words)
    [35-40s] CTA: "Subscribe for more" with keyword (5 words)
 
-3️⃣ SEO OPTIMIZATION (CRITICAL):
+3️ SEO OPTIMIZATION (CRITICAL):
    - Mention PRIMARY KEYWORD 2-3 times naturally
    - Include keyword in first 5 words
    - Use semantic variations (Bitcoin = BTC = crypto)
@@ -401,7 +399,7 @@ You are a YouTube Shorts SCRIPTWRITER and SEO EXPERT specializing in finance/cry
    - 2 MEDIUM volume (#BitcoinNews #CryptoNews - 100K-500K posts)
    - 2 LOW volume niche (#BitcoinPrice #CryptoAlert - 10K-50K posts)
 
-7️⃣ TITLE OPTIMIZATION (SEO):
+7️ TITLE OPTIMIZATION (SEO):
    - Keep 50-60 characters
    - Front-load PRIMARY KEYWORD (first 3 words)
    - Use 1 emoji max
@@ -562,7 +560,7 @@ def truncar_segmentos(segments):
     return nuevos
 
 # ================================================================
-# 🏷️ SANITIZAR HASHTAGS Y TAGS (SEO ÉLITE)
+# SANITIZAR HASHTAGS Y TAGS (SEO ÉLITE)
 # ================================================================
 def sanitizar_hashtags(hashtags_str, max_tags=6):
     if not hashtags_str:
@@ -601,7 +599,7 @@ def sanitizar_tags(tags_str, max_chars=500):
     return result.split(",") if result else []
 
 # ================================================================
-#  MÚSICA CORPORATE
+# MÚSICA CORPORATE
 # ================================================================
 FONDOS_DISPONIBLES = [
     "The Ascent.mp3",
@@ -631,7 +629,7 @@ def seleccionar_fondo_disponible(estado):
     return seleccionada
 
 # ================================================================
-#  FUNCIONES DE ESTADO
+# FUNCIONES DE ESTADO
 # ================================================================
 def cargar_estado():
     try:
@@ -753,12 +751,9 @@ def tema_ya_publicado(tema, dias=30):
     return False
 
 # ================================================================
-# 🖼️ GENERAR IMAGEN VERTICAL (PEXELS API - ÉLITE SEO)
+# GENERAR IMAGEN VERTICAL (PEXELS API - ÉLITE SEO)
 # ================================================================
 def generar_imagen_vertical(prompt, tema="", bloque="", intentos=5):
-    """
-    ÉLITE SEO: 5 intentos, modificadores aleatorios y prevención de duplicados.
-    """
     global _used_image_urls
     
     keyword_map = {
@@ -843,9 +838,6 @@ def generar_imagen_vertical(prompt, tema="", bloque="", intentos=5):
     print(f"   ❌ No unique images found after {intentos} attempts.")
     return None
 
-# ================================================================
-# 🖼️ GENERAR IMAGEN HORIZONTAL PARA MINIATURAS
-# ================================================================
 def generar_imagen_horizontal(prompt, tema="", intentos=3):
     search_query = tema if tema else prompt
     
@@ -887,9 +879,6 @@ def generar_imagen_horizontal(prompt, tema="", intentos=3):
             
     return None
 
-# ================================================================
-#  GENERAR FONDO SÓLIDO
-# ================================================================
 def generar_fondo_solido(color=(20, 20, 50), ancho=1080, alto=1920):
     img = Image.new('RGB', (ancho, alto), color)
     path = f"temp_fondo_{random.randint(1000,9999)}.jpg"
@@ -897,7 +886,7 @@ def generar_fondo_solido(color=(20, 20, 50), ancho=1080, alto=1920):
     return path
 
 # ================================================================
-# 🎙️ GENERAR AUDIO (VOZ ÉLITE)
+# GENERAR AUDIO (VOZ ÉLITE)
 # ================================================================
 def generar_audio(texto, index, intentos_por_voz=2):
     global CONFIG_VOZ_ACTUAL
@@ -926,7 +915,7 @@ def generar_audio(texto, index, intentos_por_voz=2):
     return None
 
 # ================================================================
-# 🎬 GENERAR RECURSOS POR SEGMENTO
+# GENERAR RECURSOS POR SEGMENTO
 # ================================================================
 def generar_recursos_por_segmento(segmentos_data, paleta_video, titulo, tema="", intentos_imagen=5):
     recursos = []
@@ -958,7 +947,7 @@ def generar_recursos_por_segmento(segmentos_data, paleta_video, titulo, tema="",
                 print(f"    🔄 Reusing previous image")
                 img_url = last_successful_url
             else:
-                print(f"    ️ No previous image. Retrying...")
+                print(f"    ⚠️ No previous image. Retrying...")
                 time.sleep(6)
                 img_url = generar_imagen_vertical(prompt_img, tema=tema, bloque=bloque, intentos=1)
                 if img_url:
@@ -1028,7 +1017,7 @@ def construir_prompt_miniatura(titulo, prompt_deepseek, paleta):
     )
 
 # ================================================================
-# 📝 SUBTÍTULOS CON PIL (VERTICAL) - ÉLITE
+# SUBTÍTULOS CON PIL (VERTICAL) - ÉLITE
 # ================================================================
 def agregar_subtitulos_con_pil(imagen_path, texto, salida_path):
     try:
@@ -1088,11 +1077,11 @@ def agregar_subtitulos_con_pil(imagen_path, texto, salida_path):
         return salida_path
         
     except Exception as e:
-        print(f"️ Error in subtitles: {e}")
+        print(f"⚠️ Error in subtitles: {e}")
         return imagen_path
 
 # ================================================================
-# 🔤 FUENTE GRUESA REAL
+# FUENTE GRUESA REAL
 # ================================================================
 def obtener_ruta_fuente():
     if not os.path.exists("Anton.ttf"):
@@ -1117,14 +1106,11 @@ def obtener_ruta_fuente():
     return None
 
 # ================================================================
-# 🖼️ MINIATURA PROFESIONAL HIGH-CTR (ÉLITE SEO)
+# MINIATURA PROFESIONAL HIGH-CTR (ÉLITE SEO)
 # ================================================================
 def crear_miniatura_profesional(prompt_miniatura, texto_portada, salida="miniatura_short_en.jpg"):
-    """
-    MINIATURA ÉLITE SEO - Optimizada para CTR máximo
-    """
     try:
-        print("🖼️ Generating SHORT thumbnail (ÉLITE SEO - high-impact)...")
+        print("️ Generating SHORT thumbnail (ÉLITE SEO - high-impact)...")
         
         prompt_corto = (
             f"{prompt_miniatura}, "
@@ -1144,7 +1130,7 @@ def crear_miniatura_profesional(prompt_miniatura, texto_portada, salida="miniatu
                 with open(img_path, "wb") as f:
                     f.write(r.content)
             except Exception as e:
-                print(f"️ Error downloading background: {e}. Using solid background.")
+                print(f"⚠️ Error downloading background: {e}. Using solid background.")
                 img_path = generar_fondo_solido(color=(5, 5, 15), ancho=1280, alto=720)
         else:
             img_path = generar_fondo_solido(color=(5, 5, 15), ancho=1280, alto=720)
@@ -1222,13 +1208,13 @@ def crear_miniatura_profesional(prompt_miniatura, texto_portada, salida="miniatu
         print(f"   Colors: Bright Yellow (#FFFF00) with THICK red border")
         return salida
     except Exception as e:
-        print(f"⚠️ Error in SHORT thumbnail: {e}")
+        print(f"️ Error in SHORT thumbnail: {e}")
         import traceback
         traceback.print_exc()
         return None
 
 # ================================================================
-#  MONTAR VIDEO SHORTS CON EFECTOS DINÁMICOS
+# MONTAR VIDEO SHORTS CON EFECTOS DINÁMICOS
 # ================================================================
 def montar_video_shorts(recursos, fondo_path, salida="short_capital_en.mp4"):
     if not recursos:
@@ -1335,19 +1321,19 @@ def montar_video_shorts(recursos, fondo_path, salida="short_capital_en.mp4"):
     return salida
 
 # ================================================================
-#  SUBIR A YOUTUBE (SEO ÉLITE)
+# SUBIR A YOUTUBE (SEO ÉLITE)
 # ================================================================
 def subir_a_youtube(video_path, titulo, etiquetas_str, gancho, contexto, hashtags, fuente="", miniatura_path=None, dynamic_hashtags="", seo_description=""):
     try:
         creds = Credentials.from_authorized_user_info(YOUTUBE_USER_TOKEN)
         youtube = build("youtube", "v3", credentials=creds)
     except Exception as e:
-        print(f" Error authenticating: {e}")
+        print(f"❌ Error authenticating: {e}")
         sys.exit(1)
     
     tags = sanitizar_tags(etiquetas_str)
     if not tags:
-        print("⚠️ No valid tags found. Using default tags.")
+        print("️ No valid tags found. Using default tags.")
         tags = ["finance", "investing", "crypto", "trading", "shorts"]
     
     tags_str_final = ",".join(tags)
@@ -1373,13 +1359,13 @@ def subir_a_youtube(video_path, titulo, etiquetas_str, gancho, contexto, hashtag
 
 {seo_description if seo_description else contexto}
 
-🔴 SUBSCRIBE to the channel: {CANAL_LINK}
+ SUBSCRIBE to the channel: {CANAL_LINK}
 
 📖 {fuente}
 
 {hashtags_final}
 
-️ IMPORTANT NOTICE: This content is for educational purposes only and does not constitute financial, legal, or investment advice."""
+⚠️ IMPORTANT NOTICE: This content is for educational purposes only and does not constitute financial, legal, or investment advice."""
     
     body = {
         "snippet": {
@@ -1414,7 +1400,7 @@ def subir_a_youtube(video_path, titulo, etiquetas_str, gancho, contexto, hashtag
     return video_id
 
 # ================================================================
-# 🧹 LIMPIEZA
+# LIMPIEZA
 # ================================================================
 def limpiar_archivos_temporales():
     import glob
@@ -1427,16 +1413,15 @@ def limpiar_archivos_temporales():
         for f in glob.glob(patron):
             try:
                 os.remove(f)
-                print(f" Removed: {f}")
+                print(f"🧹 Removed: {f}")
             except:
                 pass
     print("✅ Cleanup completed")
 
 # ================================================================
-# 📄 INICIALIZAR ARCHIVOS JSON
+# INICIALIZAR ARCHIVOS JSON
 # ================================================================
 def inicializar_archivos_json():
-    """Crear archivos JSON si no existen"""
     archivos_needed = {
         "temas_shorts_publicados.json": {"temas": []},
         "temas_shorts_en_publicados.json": {"temas": []},
@@ -1454,7 +1439,7 @@ def inicializar_archivos_json():
                 json.dump(contenido_default, f, indent=2, ensure_ascii=False)
 
 # ================================================================
-# 🎯 MAIN - ÉLITE SEO
+# MAIN - ÉLITE SEO
 # ================================================================
 def main():
     global _used_image_urls
@@ -1550,7 +1535,7 @@ def main():
     
     print(f"🏷️ Title: {titulo}")
     print(f"🏷️ Dynamic hashtags: {dynamic_hashtags}")
-    print(f" SEO Keywords: {', '.join(guion.get('keywords', [])[:3])}")
+    print(f"🔑 SEO Keywords: {', '.join(guion.get('keywords', [])[:3])}")
     
     recursos = generar_recursos_por_segmento(
         segments_data, paleta_video, titulo, tema=tema_elegido
@@ -1593,7 +1578,7 @@ def main():
     limpiar_archivos_temporales()
     
     print(f"✅ Short published successfully!")
-    print(f"🔗 https://youtu.be/{video_id}")
+    print(f" https://youtu.be/{video_id}")
     print(f"📊 SEO Score: Optimized for maximum visibility")
 
 if __name__ == "__main__":
