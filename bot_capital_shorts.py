@@ -44,6 +44,7 @@ ESTADO_FILE_ES = "estado_capital_shorts.json"
 TITULOS_FILE_ES = "titulos_capital_shorts_publicados.json"
 TEMAS_PUBLICADOS_FILE_ES = "temas_shorts_publicados.json"
 
+# 🔧 CORRECCIÓN: Límite estricto de 2 videos por día
 META_DIARIA_SHORTS = 2
 DIAS_SIN_REPETIR_TEMA = 30
 
@@ -144,7 +145,7 @@ RECENTLY PUBLISHED TOPICS (avoid repeating):
 9. Crypto regulation updates (100K+ searches)
 10. DeFi and staking yields (90K+ searches)
 
-📈 HIGH-SEARCH-VOLUME KEYWORDS (SEO OPTIMIZED):
+ HIGH-SEARCH-VOLUME KEYWORDS (SEO OPTIMIZED):
 PRIMARY: "Bitcoin price" (1.2M/mo), "Cryptocurrency" (823K/mo), "Crypto news" (450K/mo)
 SECONDARY: "Bitcoin crash" (165K/mo), "Fed rate cut" (135K/mo), "Gold price" (301K/mo)
 LONG-TAIL: "Bitcoin price prediction today" (45K/mo), "Is Bitcoin a good investment" (33K/mo)
@@ -209,7 +210,7 @@ Return in JSON:
         return trends
         
     except Exception as e:
-        print(f"⚠️ Error analyzing trends: {e}")
+        print(f"️ Error analyzing trends: {e}")
         return None
 
 # ================================================================
@@ -275,7 +276,7 @@ FORMULA 6 - BREAKING NEWS + IMPACT:
 
 REQUIREMENTS:
 ✅ Title: 50-60 characters MAX (mobile optimized, front-load keyword)
-✅ Include 1 emoji (📈⚠️💰)
+✅ Include 1 emoji (⚠️💰)
 ✅ Front-load PRIMARY KEYWORD (first 3 words)
 ✅ Create CURIOSITY GAP (don't reveal everything)
 ✅ Use POWER WORDS: SHOCKING, WARNING, SECRET, EXPOSED, TRUTH, PROVEN, BREAKING
@@ -353,7 +354,7 @@ def modificar_titulo_para_evitar_duplicado(titulo_original, titulos_existentes):
     prefijos_unicos = [
         "🚨 BREAKING:", "⚠️ WARNING:", "📈 UPDATE:", "💰 ALERT:",
         "🔥 HOT:", "⚡ LIVE:", "📊 NEW:", "🎯 EXCLUSIVE:",
-        "🚀 SHOCKING:", "💥 URGENT:"
+        "🚀 SHOCKING:", " URGENT:"
     ]
     
     # Estrategia 1: Agregar prefijo único
@@ -438,11 +439,11 @@ def generar_guion_financiero(tipo, idea=None, fecha_actual=None):
 You are a YouTube Shorts SCRIPTWRITER and SEO EXPERT specializing in finance/crypto.
 
 📌 TOPIC: "{tema_elegido}"
-📌 HOOK: "{hook_sugerido}"
+ HOOK: "{hook_sugerido}"
 📌 PRIMARY KEYWORDS: {keywords_str}
 📅 DATE: {fecha_actual}
 
-🎬 CRITICAL RULES:
+ CRITICAL RULES:
 
 1️⃣ FIRST 3 SECONDS (MOST IMPORTANT - MUST STOP THE SCROLL):
    - Use: SHOCKING statement + Visual urgency + KEYWORD
@@ -486,7 +487,7 @@ You are a YouTube Shorts SCRIPTWRITER and SEO EXPERT specializing in finance/cry
    - 2 MEDIUM volume (#BitcoinNews #CryptoNews - 100K-500K posts)
    - 2 LOW volume niche (#BitcoinPrice #CryptoAlert - 10K-50K posts)
 
-7️⃣ TITLE OPTIMIZATION (SEO):
+7️ TITLE OPTIMIZATION (SEO):
    - Keep 50-60 characters
    - Front-load PRIMARY KEYWORD (first 3 words)
    - Use 1 emoji max
@@ -549,7 +550,7 @@ You are a YouTube Shorts SCRIPTWRITER and SEO EXPERT specializing in finance/cry
     payload = {
         "model": "deepseek-chat",
         "messages": [{"role": "user", "content": prompt}],
-        "temperature": 0.85,  # Aumentado para más variedad
+        "temperature": 0.85,
         "max_tokens": 1200,
         "response_format": {"type": "json_object"}
     }
@@ -600,7 +601,7 @@ You are a YouTube Shorts SCRIPTWRITER and SEO EXPERT specializing in finance/cry
             titulo = data.get("title", "").strip()
             titulo = re.sub(r'#\w+', '', titulo).strip()
             
-            # 🔧 CORRECCIÓN CRÍTICA: Si es duplicado, MODIFICAR en lugar de rechazar
+            #  CORRECCIÓN CRÍTICA: Si es duplicado, MODIFICAR en lugar de rechazar
             titulos_existentes = cargar_titulos_publicados()["titulos"]
             if _es_titulo_duplicado_real(titulo, titulos_existentes):
                 print(f"   ⚠️ Title similar to existing: '{titulo}'")
@@ -665,7 +666,7 @@ You are a YouTube Shorts SCRIPTWRITER and SEO EXPERT specializing in finance/cry
         "seo_optimized_description": f"Latest analysis on {tema_elegido[:50]}. Stay informed with daily market updates."
     }
     
-    print(f"   🏷️ Forced title: {data_forzada['title']}")
+    print(f"   ️ Forced title: {data_forzada['title']}")
     return data_forzada, tema_elegido, tipo
 
 def truncar_segmentos(segments):
@@ -804,23 +805,43 @@ def titulo_ya_publicado(titulo):
     return _es_titulo_duplicado_real(titulo, data["titulos"])
 
 def obtener_publicaciones_hoy():
+    """
+    🔧 CORRECCIÓN: Verificación estricta de fecha y contador
+    """
     estado = cargar_estado()
     pub = estado.get("publicaciones_hoy")
+    
     if not pub:
         return 0
+    
     hoy = datetime.now(ZoneInfo("America/Mexico_City")).strftime("%Y-%m-%d")
+    
+    # Verificar si la fecha coincide EXACTAMENTE
     if pub.get("fecha") == hoy:
-        return pub.get("cantidad", 0)
-    return 0
+        cantidad = pub.get("cantidad", 0)
+        print(f" Publicaciones hoy ({hoy}): {cantidad}/{META_DIARIA_SHORTS}")
+        return cantidad
+    else:
+        print(f"📅 Nueva fecha detectada. Anterior: {pub.get('fecha')}, Hoy: {hoy}")
+        return 0
 
 def incrementar_publicaciones_hoy():
+    """
+    🔧 CORRECCIÓN: Incremento persistente con fecha actual
+    """
     estado = cargar_estado()
     hoy = datetime.now(ZoneInfo("America/Mexico_City")).strftime("%Y-%m-%d")
     pub = estado.get("publicaciones_hoy")
+    
     if pub and pub.get("fecha") == hoy:
+        # Ya existe registro para hoy, incrementar
         pub["cantidad"] = pub.get("cantidad", 0) + 1
+        print(f"✅ Publicación #{pub['cantidad']} registrada para {hoy}")
     else:
+        # Nuevo día, crear registro desde cero
         estado["publicaciones_hoy"] = {"fecha": hoy, "cantidad": 1}
+        print(f"✅ Primera publicación del día ({hoy}) registrada")
+    
     guardar_estado(estado)
 
 def cargar_temas_publicados():
@@ -866,9 +887,12 @@ def tema_ya_publicado(tema, dias=30):
     return False
 
 # ================================================================
-# GENERAR IMAGEN VERTICAL (PEXELS API - ÉLITE SEO)
+# 🔧 GENERAR IMAGEN VERTICAL CON MÁS INTENTOS Y TIEMPO
 # ================================================================
-def generar_imagen_vertical(prompt, tema="", bloque="", intentos=5):
+def generar_imagen_vertical(prompt, tema="", bloque="", intentos=10):
+    """
+    🔧 CORRECCIÓN: 10 intentos con 10 segundos de espera
+    """
     global _used_image_urls
     
     keyword_map = {
@@ -916,44 +940,56 @@ def generar_imagen_vertical(prompt, tema="", bloque="", intentos=5):
         "cryptocurrency bitcoin technology"
     ]
     
+    print(f"   🔍 Iniciando búsqueda de imágenes ({intentos} intentos máx)...")
+    
     for intento in range(intentos):
         current_query = fallback_queries[intento % len(fallback_queries)]
         
-        random_page = random.randint(1, 5)
-        url = f"https://api.pexels.com/v1/search?query={current_query.replace(' ', '+')}&per_page=5&orientation=portrait&page={random_page}"
+        # 🔧 Página aleatoria para más variedad
+        random_page = random.randint(1, 10)
+        url = f"https://api.pexels.com/v1/search?query={current_query.replace(' ', '+')}&per_page=10&orientation=portrait&page={random_page}"
         headers = {"Authorization": PEXELS_API_KEY}
         
         try:
-            print(f"   🖼️ Pexels search: '{current_query}' (Intento {intento+1}/{intentos})")
+            print(f"   🖼️ Intento {intento+1}/{intentos}: '{current_query}' (página {random_page})...")
             r = requests.get(url, headers=headers, timeout=30)
             
             if r.status_code == 200:
                 data = r.json()
                 if data.get("photos") and len(data["photos"]) > 0:
-                    photos = data["photos"][:5]
+                    photos = data["photos"][:10]  # Más fotos para elegir
                     
                     for photo in photos:
                         img_url = photo["src"].get("portrait") or photo["src"].get("original")
                         
+                        # 🔧 Verificación estricta de URLs únicas
                         if img_url in _used_image_urls:
-                            print(f"   ⚠️ Image already used, searching another...")
+                            print(f"      ⚠️ Imagen ya usada, buscando otra...")
+                            continue
+                        
+                        # Verificar que sea una URL válida
+                        if not img_url or not img_url.startswith("http"):
                             continue
                         
                         _used_image_urls.add(img_url)
-                        print(f"   ✅ Found unique vertical image: {photo.get('photographer', 'Unknown')}")
+                        print(f"      ✅ Imagen ÚNICA encontrada: {photo.get('photographer', 'Unknown')}")
                         return img_url
                         
+            else:
+                print(f"      ⚠️ Error API: {r.status_code}")
+                
         except Exception as e:
-            print(f"   ⚠️ Connection error: {e}")
+            print(f"      ⚠️ Error de conexión: {e}")
             
+        # 🔧 Espera de 10 segundos entre intentos
         if intento < intentos - 1:
-            print(f"   ⏳ Waiting 6 seconds before next attempt...")
-            time.sleep(6)
+            print(f"      ⏳ Esperando 10 segundos...")
+            time.sleep(10)
     
-    print(f"   ❌ No unique images found after {intentos} attempts.")
+    print(f"   ❌ No se encontraron imágenes únicas tras {intentos} intentos.")
     return None
 
-def generar_imagen_horizontal(prompt, tema="", intentos=3):
+def generar_imagen_horizontal(prompt, tema="", intentos=5):
     search_query = tema if tema else prompt
     
     search_query = re.sub(r'[^a-zA-Z0-9\s]', '', search_query).strip()
@@ -985,7 +1021,7 @@ def generar_imagen_horizontal(prompt, tema="", intentos=3):
                     print(f"   ✅ Horizontal image found.")
                     return img_url
             else:
-                print(f"   ⚠️ Pexels API error {r.status_code}")
+                print(f"   ️ Pexels API error {r.status_code}")
         except Exception as e:
             print(f"   ⚠️ Connection error: {e}")
             
@@ -1032,7 +1068,7 @@ def generar_audio(texto, index, intentos_por_voz=2):
 # ================================================================
 # GENERAR RECURSOS POR SEGMENTO
 # ================================================================
-def generar_recursos_por_segmento(segmentos_data, paleta_video, titulo, tema="", intentos_imagen=5):
+def generar_recursos_por_segmento(segmentos_data, paleta_video, titulo, tema="", intentos_imagen=10):
     recursos = []
     total = len(segmentos_data)
     last_successful_url = None
@@ -1042,33 +1078,37 @@ def generar_recursos_por_segmento(segmentos_data, paleta_video, titulo, tema="",
         prompt_deepseek = seg.get("image_prompt", "")
         bloque = seg.get("block", "")
         
-        print(f"  🎬 Segment {idx+1}/{total} - {bloque} ({len(seg_text.split())} words)")
+        print(f"  🎬 Segmento {idx+1}/{total} - {bloque} ({len(seg_text.split())} words)")
         
         prompt_img = construir_prompt_segmento(titulo, prompt_deepseek, idx, paleta_video)
         
         print(f"    📝 Prompt: {prompt_img[:100]}...")
         
         img_url = None
+        
+        # 🔧 Múltiples intentos con espera extendida
         for intento in range(intentos_imagen):
             img_url = generar_imagen_vertical(prompt_img, tema=tema, bloque=bloque, intentos=1)
             if img_url:
-                print(f"    ✅ Image generated (attempt {intento+1})")
+                print(f"    ✅ Imagen generada (intento {intento+1})")
                 last_successful_url = img_url
                 break
-            time.sleep(6)
+            # 🔧 Espera de 10 segundos entre intentos
+            print(f"    ⏳ Esperando 10 segundos...")
+            time.sleep(10)
         
         if not img_url:
             if last_successful_url:
-                print(f"    🔄 Reusing previous image")
+                print(f"    🔄 Reutilizando imagen anterior")
                 img_url = last_successful_url
             else:
-                print(f"    ⚠️ No previous image. Retrying...")
-                time.sleep(6)
+                print(f"    ⚠️ Sin imagen previa. Reintentando...")
+                time.sleep(10)
                 img_url = generar_imagen_vertical(prompt_img, tema=tema, bloque=bloque, intentos=1)
                 if img_url:
                     last_successful_url = img_url
                 else:
-                    print(f"    ❌ Failed definitively, using solid background")
+                    print(f"    ❌ Fallo definitivo, usando fondo sólido")
                     img_path = generar_fondo_solido(color=(20, 20, 50), ancho=1080, alto=1920)
                     img_url = img_path
                     last_successful_url = img_url
@@ -1080,7 +1120,7 @@ def generar_recursos_por_segmento(segmentos_data, paleta_video, titulo, tema="",
         
         audio_path = generar_audio(seg_text, idx)
         if not audio_path:
-            print(f"    ❌ Audio failed for segment {idx+1}. Aborting.")
+            print(f"    ❌ Audio falló para segmento {idx+1}. Abortando.")
             return None
         
         try:
@@ -1097,8 +1137,8 @@ def generar_recursos_por_segmento(segmentos_data, paleta_video, titulo, tema="",
         })
         
         if idx < total - 1:
-            print(f"   ⏳ Waiting 6 seconds...")
-            time.sleep(6)
+            print(f"   ⏳ Esperando 10 segundos...")
+            time.sleep(10)
     
     return recursos
 
@@ -1192,7 +1232,7 @@ def agregar_subtitulos_con_pil(imagen_path, texto, salida_path):
         return salida_path
         
     except Exception as e:
-        print(f"⚠️ Error in subtitles: {e}")
+        print(f"️ Error in subtitles: {e}")
         return imagen_path
 
 # ================================================================
@@ -1201,7 +1241,7 @@ def agregar_subtitulos_con_pil(imagen_path, texto, salida_path):
 def obtener_ruta_fuente():
     if not os.path.exists("Anton.ttf"):
         try:
-            print("📥 Downloading Anton font...")
+            print(" Downloading Anton font...")
             url = "https://github.com/google/fonts/raw/main/ofl/anton/Anton-Regular.ttf"
             r = requests.get(url, timeout=30)
             if r.status_code == 200 and len(r.content) > 10000:
@@ -1448,7 +1488,7 @@ def subir_a_youtube(video_path, titulo, etiquetas_str, gancho, contexto, hashtag
     
     tags = sanitizar_tags(etiquetas_str)
     if not tags:
-        print("⚠️ No valid tags found. Using default tags.")
+        print("️ No valid tags found. Using default tags.")
         tags = ["finance", "investing", "crypto", "trading", "shorts"]
     
     tags_str_final = ",".join(tags)
@@ -1459,7 +1499,7 @@ def subir_a_youtube(video_path, titulo, etiquetas_str, gancho, contexto, hashtag
             tags = tags[:5]
             tags_str_final = ",".join(tags)
     
-    print(f"🏷️ Final tags ({len(tags)}): {tags_str_final}")
+    print(f"️ Final tags ({len(tags)}): {tags_str_final}")
     
     hashtags_fijos = "#Shorts #Finance #Investing"
     if dynamic_hashtags:
@@ -1476,11 +1516,11 @@ def subir_a_youtube(video_path, titulo, etiquetas_str, gancho, contexto, hashtag
 
 🔴 SUBSCRIBE to the channel: {CANAL_LINK}
 
-📖 {fuente}
+ {fuente}
 
 {hashtags_final}
 
-⚠️ IMPORTANT NOTICE: This content is for educational purposes only and does not constitute financial, legal, or investment advice."""
+️ IMPORTANT NOTICE: This content is for educational purposes only and does not constitute financial, legal, or investment advice."""
     
     body = {
         "snippet": {
@@ -1510,7 +1550,7 @@ def subir_a_youtube(video_path, titulo, etiquetas_str, gancho, contexto, hashtag
             youtube.thumbnails().set(videoId=video_id, media_body=media_thumb).execute()
             print("✅ Professional thumbnail uploaded")
         except Exception as e:
-            print(f"⚠️ Error uploading thumbnail: {e}")
+            print(f"️ Error uploading thumbnail: {e}")
     
     return video_id
 
@@ -1528,7 +1568,7 @@ def limpiar_archivos_temporales():
         for f in glob.glob(patron):
             try:
                 os.remove(f)
-                print(f"🧹 Removed: {f}")
+                print(f" Removed: {f}")
             except:
                 pass
     print("✅ Cleanup completed")
@@ -1549,7 +1589,7 @@ def inicializar_archivos_json():
     
     for archivo, contenido_default in archivos_needed.items():
         if not os.path.exists(archivo):
-            print(f"📄 Creating missing file: {archivo}")
+            print(f" Creating missing file: {archivo}")
             with open(archivo, "w", encoding="utf-8") as f:
                 json.dump(contenido_default, f, indent=2, ensure_ascii=False)
 
@@ -1569,11 +1609,11 @@ def main():
     print("   ✓ High-CTR thumbnails (yellow on black)")
     print("   ✓ Dynamic zoom effects")
     print("   ✓ Trending topics analysis")
-    print("   ✓ 5 image attempts with 6s delay")
+    print("   ✓ 10 image attempts with 10s delay")
     print("   ✓ Duplicate image prevention")
     print("   ✓ ÉLITE voice settings (+12% speed)")
     print("   ✓ SEO-optimized descriptions")
-    print("   ✓ 2 publications per day")
+    print("   ✓ STRICT 2 publications per day limit")
     print("   ✓ Smart duplicate title MODIFICATION")
     print("="*60)
 
@@ -1595,10 +1635,13 @@ def main():
         print("❌ PEXELS_API_KEY missing")
         sys.exit(1)
     
+    # 🔧 VERIFICACIÓN ESTRICTA DEL LÍMITE DIARIO
     publicadas = obtener_publicaciones_hoy()
     if publicadas >= META_DIARIA_SHORTS:
-        print(f"✅ Already published {META_DIARIA_SHORTS} shorts today. Exiting.")
+        print(f"✅ Límite de {META_DIARIA_SHORTS} shorts alcanzado hoy. Saliendo.")
         sys.exit(0)
+    
+    print(f"📊 Publicaciones hoy: {publicadas}/{META_DIARIA_SHORTS}")
     
     trends_data = None
     try:
@@ -1619,7 +1662,7 @@ def main():
     else:
         tipo = "analysis"
     
-    print(f"📌 Type: {tipo.upper()} (Short #{publicadas+1} of {META_DIARIA_SHORTS} today)")
+    print(f" Type: {tipo.upper()} (Short #{publicadas+1} of {META_DIARIA_SHORTS} today)")
     
     estado = cargar_estado()
     fondo_path = seleccionar_fondo_disponible(estado)
@@ -1636,7 +1679,7 @@ def main():
         print(f"   🎯 Psychology trigger: {idea.get('psychology_trigger', 'N/A')}")
         print(f"   🔑 SEO Keywords: {', '.join(idea.get('seo_keywords', [])[:3])}")
     else:
-        print("⚠️ No idea generated, using fallback topic.")
+        print("️ No idea generated, using fallback topic.")
         idea = None
     
     guion, tema_elegido, restriccion = generar_guion_financiero(tipo, idea, fecha_formateada)
