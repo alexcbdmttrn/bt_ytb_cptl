@@ -45,24 +45,99 @@ ESTADO_FILE_ES = "estado_capital_largos.json"
 TITULOS_FILE_ES = "titulos_capital_largos_publicados.json"
 TEMAS_PUBLICADOS_FILE_ES = "temas_largos_publicados.json"
 
+# 🔧 CORRECCIÓN: 1 video cada 2 días
 META_DIARIA_LARGOS = 1
 DIAS_SIN_REPETIR_TEMA = 45
 
 _used_image_urls = set()
 
 # ================================================================
-# 🎙️ VOZ ÉLITE OPTIMIZADA
+# ️ VOZ ÉLITE OPTIMIZADA
 # ================================================================
 VOZ_FIJA = {
     "voz": "en-US-JennyNeural",
-    "velocidad": "+10%",  # Más rápido para retención
-    "tono": "+1Hz",        # Más energía
+    "velocidad": "+10%",
+    "tono": "+1Hz",
     "volumen": "+5%"
 }
 CONFIG_VOZ_ACTUAL = VOZ_FIJA
 
 # ================================================================
-#  PALETAS ÉLITE
+#  CATEGORÍAS DE CONTENIDO (90% educativo/histórico, 10% noticias)
+# ================================================================
+CATEGORIAS_CONTENIDO = {
+    "educational": {
+        "peso": 40,  # 40% del total
+        "temas": [
+            "How Bitcoin Mining Actually Works",
+            "Understanding Blockchain Technology",
+            "Gold vs Bitcoin: Complete Comparison",
+            "How to Read Crypto Charts",
+            "Dollar Cost Averaging Strategy",
+            "Portfolio Diversification with Crypto and Gold",
+            "Understanding Market Cycles",
+            "Risk Management in Crypto Investing",
+            "Technical Analysis Basics",
+            "Fundamental Analysis for Crypto"
+        ]
+    },
+    "historical": {
+        "peso": 35,  # 35% del total
+        "temas": [
+            "Bitcoin's 2017 Bull Run: What Really Happened",
+            "The 2008 Financial Crisis and Bitcoin's Birth",
+            "Gold Standard: Why It Ended and What It Means",
+            "Tulip Mania: First Bubble in History",
+            "2021 Crypto Crash: Lessons Learned",
+            "The Great Depression and Gold",
+            "Mt Gox Hack: What Happened",
+            "Bitcoin's First Real World Purchase (Pizza Day)",
+            "2013 Cyprus Crisis and Bitcoin",
+            "Historical Gold Price Crashes"
+        ]
+    },
+    "analysis": {
+        "peso": 15,  # 15% del total
+        "temas": [
+            "Bitcoin Halving Cycles Analysis",
+            "Gold Price Patterns Over 50 Years",
+            "Crypto Market Correlation Analysis",
+            "Institutional Adoption Trends",
+            "Central Bank Digital Currencies Impact",
+            "Inflation Impact on Gold and Bitcoin",
+            "Stock to Flow Model Explained",
+            "On-Chain Analysis Basics",
+            "Macro Economic Factors Affecting Crypto",
+            "Geopolitical Events and Safe Haven Assets"
+        ]
+    },
+    "news": {
+        "peso": 10,  # SOLO 10% noticias
+        "temas": [
+            "Latest Fed Rate Decision Impact",
+            "Breaking: Major Crypto Regulation",
+            "Bitcoin ETF Approval News",
+            "Central Bank Gold Purchases",
+            "Major Exchange Updates"
+        ]
+    }
+}
+
+def seleccionar_categoria():
+    """Selecciona categoría basada en pesos (90% educativo/histórico, 10% noticias)"""
+    total_peso = sum(cat["peso"] for cat in CATEGORIAS_CONTENIDO.values())
+    numero_aleatorio = random.uniform(0, total_peso)
+    
+    peso_acumulado = 0
+    for categoria, datos in CATEGORIAS_CONTENIDO.items():
+        peso_acumulado += datos["peso"]
+        if numero_aleatorio <= peso_acumulado:
+            return categoria, random.choice(datos["temas"])
+    
+    return "educational", random.choice(CATEGORIAS_CONTENIDO["educational"]["temas"])
+
+# ================================================================
+# 🎨 PALETAS ÉLITE
 # ================================================================
 PALETAS_VIDEO = [
     "electric cyan #00FFFF and gold #FFD700 neon on dark navy #0A0E27",
@@ -97,6 +172,8 @@ SUJETOS_VISUALES = [
     (["house", "real estate", "mortgage"], "a miniature house model over financial charts"),
     (["psychology", "fear", "greed", "panic"], "a human head silhouette filled with rising and falling charts"),
     (["war", "geopolitic", "country", "china", "russia"], "a world map with glowing trade routes and tension lines"),
+    (["history", "historical", "past", "1971", "2008", "2017"], "vintage historical financial documents and charts with aged paper texture"),
+    (["education", "learn", "tutorial", "guide", "explained"], "educational infographic style with clean charts and diagrams"),
 ]
 
 def detectar_sujeto_visual(texto_ref):
@@ -125,7 +202,6 @@ def analizar_trends_semanal_largos():
         except:
             continue
     
-    # CORRECCIÓN: Mover expresiones complejas fuera del f-string
     temas_text = "\n".join(temas_recientes[:10]) if temas_recientes else "None"
     
     prompt = f"""
@@ -134,10 +210,44 @@ You are a VIRAL TREND ANALYST and SEO EXPERT for YouTube LONG-FORM finance/crypt
 CURRENT DATE: September 2024
 YOUR TASK: Identify DEEP-DIVE TOPICS with HIGH SEARCH VOLUME suitable for long-form content.
 
+CONTENT MIX (CRITICAL):
+- 40% Educational content (how-to, tutorials, explanations)
+- 35% Historical analysis (past events, lessons learned, case studies)
+- 15% Market analysis (cycles, patterns, trends)
+- 10% Breaking news (only if MAJOR impact)
+
 RECENTLY PUBLISHED TOPICS (avoid repeating):
 {temas_text}
 
- TRENDING TOPICS FOR LONG-FORM (September 2024) - HIGH SEARCH VOLUME:
+ EDUCATIONAL TOPICS (HIGH DEMAND):
+- How Bitcoin mining works
+- Understanding blockchain technology
+- Gold vs Bitcoin comparison
+- How to read crypto charts
+- Dollar cost averaging strategy
+- Portfolio diversification
+- Risk management
+- Technical analysis basics
+
+📜 HISTORICAL TOPICS (HIGH ENGAGEMENT):
+- Bitcoin's 2017 bull run
+- 2008 financial crisis and Bitcoin's birth
+- Gold standard history
+- Tulip mania first bubble
+- 2021 crypto crash lessons
+- Mt Gox hack
+- Bitcoin pizza day
+- 2013 Cyprus crisis
+
+📈 ANALYSIS TOPICS:
+- Bitcoin halving cycles
+- Gold price patterns
+- Market correlation
+- Institutional adoption
+- Inflation impact
+- Macro economic factors
+
+ TRENDING NOW (September 2024) - HIGH SEARCH VOLUME:
 1. Bitcoin price reaction to Fed rate cut (500K+ searches)
 2. Federal Reserve interest rate decisions (300K+ searches)
 3. Bitcoin vs Gold performance comparison (200K+ searches)
@@ -158,6 +268,7 @@ YOUR TASK: Generate 5 VIDEO TOPICS optimized for SEO and virality.
 
 For each topic provide:
 - Topic name (include primary keyword)
+- Category (educational/historical/analysis/news)
 - Why it's trending NOW (data-driven)
 - Search volume estimate (high/medium/low)
 - Viral potential (1-10)
@@ -170,18 +281,19 @@ Return in JSON format with this structure:
 {{
     "trending_topics": [
         {{
-            "topic": "Bitcoin Fed Rate Cut: Complete Analysis",
-            "why_trending": "Fed just cut rates by 0.50%, Bitcoin reacted +7.7% in 24h",
+            "topic": "Bitcoin Halving Cycles: Complete History",
+            "category": "historical",
+            "why_trending": "Next halving approaching, people want to understand past cycles",
             "search_volume": "high",
             "viral_score": 9,
             "best_format": "deep-dive",
-            "hook": "The Fed just did something unprecedented. Here is what it means for Bitcoin...",
-            "chapters": ["The Announcement", "Market Reaction", "Historical Context", "What is Next"],
-            "seo_keywords": ["Bitcoin price", "Fed rate cut", "crypto analysis", "Bitcoin news"]
+            "hook": "Every 4 years, Bitcoin does something incredible. Let me show you what happened in 2012, 2016, and 2020...",
+            "chapters": ["2012 First Halving", "2016 Second Halving", "2020 Third Halving", "What to Expect Next"],
+            "seo_keywords": ["bitcoin halving", "crypto cycles", "bitcoin history", "halving analysis"]
         }}
     ],
     "topics_to_avoid": ["topic1", "topic2"],
-    "best_topic_this_week": "Bitcoin Fed Rate Cut: Complete Analysis",
+    "best_topic_this_week": "Bitcoin Halving Cycles: Complete History",
     "high_volume_keywords": ["Bitcoin price", "crypto news", "Fed rate cut", "Bitcoin analysis"]
 }}
 """
@@ -203,7 +315,6 @@ Return in JSON format with this structure:
         data = r.json()
         content = data["choices"][0]["message"]["content"]
         
-        # Limpiar el contenido
         content = content.strip()
         if "```json" in content:
             content = content.replace("```json", "").replace("```", "").strip()
@@ -220,69 +331,107 @@ Return in JSON format with this structure:
             print(f"   ✅ Best topic this week: {trends.get('best_topic_this_week', 'N/A')}")
             return trends
         else:
-            print("⚠️ No JSON found in response")
+            print("️ No JSON found in response")
             return None
         
     except Exception as e:
-        print(f"️ Error analyzing trends: {e}")
+        print(f"⚠️ Error analyzing trends: {e}")
         return None
 
 # ================================================================
-#  GENERAR IDEA DE VIDEO LARGO CON FÓRMULAS VIRALES (ÉLITE SEO)
+# 🎬 GENERAR IDEA DE VIDEO LARGO CON VARIEDAD DE TEMAS (ÉLITE SEO)
 # ================================================================
 def generar_idea_video_largo(tipo, fecha_actual, trends_data=None):
     """
-    PROMPT ÉLITE SEO: Enfocado en viralidad, CTR alto y SEO para largos
+    PROMPT ÉLITE SEO: 90% educativo/histórico, 10% noticias
     """
-    tema_sugerido = ""
+    # 🔧 SELECCIONAR CATEGORÍA BASADA EN PESOS
+    categoria_seleccionada, tema_sugerido = seleccionar_categoria()
+    
+    print(f"📚 Categoría seleccionada: {categoria_seleccionada.upper()}")
+    print(f"📝 Tema: {tema_sugerido}")
+    
     seo_keywords = []
     if trends_data and "best_topic_this_week" in trends_data:
-        tema_sugerido = f"SUGGESTED TOPIC: {trends_data['best_topic_this_week']}\n"
         seo_keywords = trends_data.get("high_volume_keywords", [])
     
-    # CORRECCIÓN: Mover expresiones complejas fuera del f-string
-    keywords_text = ", ".join(seo_keywords[:5]) if seo_keywords else "Bitcoin price, crypto news, cryptocurrency"
+    keywords_text = ", ".join(seo_keywords[:5]) if seo_keywords else "Bitcoin, crypto, gold, investing"
+    
+    # 🔧 PROMPTS ESPECÍFICOS POR CATEGORÍA
+    if categoria_seleccionada == "educational":
+        formulas = [
+            f"The Complete Guide to {tema_sugerido}",
+            f"{tema_sugerido} Explained Step by Step",
+            f"Everything You Need to Know About {tema_sugerido}",
+            f"How {tema_sugerido} Actually Works",
+            f"Master {tema_sugerido} in 10 Minutes"
+        ]
+    elif categoria_seleccionada == "historical":
+        formulas = [
+            f"{tema_sugerido}: The Complete Story",
+            f"What Really Happened: {tema_sugerido}",
+            f"{tema_sugerido} - Lessons We Learned",
+            f"The Untold Story of {tema_sugerido}",
+            f"How {tema_sugerido} Changed Everything"
+        ]
+    elif categoria_seleccionada == "analysis":
+        formulas = [
+            f"{tema_sugerido} - Deep Dive Analysis",
+            f"The Truth About {tema_sugerido}",
+            f"{tema_sugerido} Explained with Data",
+            f"What the Data Says About {tema_sugerido}",
+            f"{tema_sugerido} - Complete Breakdown"
+        ]
+    else:  # news (solo 10%)
+        formulas = [
+            f"BREAKING: {tema_sugerido}",
+            f"{tema_sugerido} - What It Means",
+            f"URGENT: {tema_sugerido} Impact",
+            f"{tema_sugerido} - Full Analysis"
+        ]
+    
+    formula_elegida = random.choice(formulas)
     
     prompt = f"""
 You are a VIRAL CONTENT STRATEGIST and SEO EXPERT for YouTube LONG-FORM videos (7-9 minutes) in finance/crypto.
 
 CURRENT DATE: {fecha_actual}
+CONTENT CATEGORY: {categoria_seleccionada.upper()}
+SUGGESTED TOPIC: {tema_sugerido}
 YOUR GOAL: Generate ideas that get 50,000+ views with HIGH CTR (10%+) and HIGH RETENTION (60%+)
-
-{tema_sugerido}
 
 🎯 SEO KEYWORDS TO INCLUDE (HIGH VOLUME):
 {keywords_text}
 
 VIRAL TITLE FORMULAS FOR LONG-FORM (SEO OPTIMIZED):
+{formula_elegida}
 
-FORMULA 1 - COMPREHENSIVE GUIDE + KEYWORD:
-"The Complete Guide to Bitcoin Price in 2024"
-"Everything You Need to Know About Crypto Trading"
+📚 CONTENT TYPE: {categoria_seleccionada}
 
-FORMULA 2 - DEEP DIVE + CURIOSITY:
-"Bitcoin Explained: The Full Story (Deep Dive)"
-"The Truth About Fed Rate Cut (Complete Analysis)"
+If EDUCATIONAL:
+- Focus on teaching and explaining clearly
+- Use simple language and analogies
+- Include practical examples
+- Step-by-step breakdown
 
-FORMULA 3 - COMPARISON SHOCK:
-"Bitcoin vs Gold: Which Is Better? (Full Comparison)"
-"I Tested Crypto vs Stocks for 30 Days - Results"
+If HISTORICAL:
+- Tell a compelling story
+- Include specific dates and events
+- Show cause and effect
+- Extract lessons learned
+- Connect past to present
 
-FORMULA 4 - BREAKING NEWS + IMPACT:
-"BREAKING: Fed Rate Cut - Bitcoin Impact (Full Analysis)"
-"Bitcoin Halving Just Happened - Here is What is Next"
+If ANALYSIS:
+- Use data and charts
+- Show patterns and trends
+- Compare different scenarios
+- Provide actionable insights
 
-FORMULA 5 - CONTROVERSY + PROOF:
-"Why Bitcoin Is NOT a Bubble - Here is Proof"
-"The Crypto Lie They Do Not Want You to Know"
-
-FORMULA 6 - PREDICTION + DATA:
-"Bitcoin Price Prediction: What is Next? (Data-Driven)"
-"Where Crypto Is Heading in 2024 (Expert Analysis)"
-
-FORMULA 7 - STEP-BY-STEP GUIDE:
-"How to Invest in Bitcoin (Step-by-Step Guide)"
-"7 Steps to Master Crypto Trading"
+If NEWS (only 10%):
+- Focus on IMPACT, not just facts
+- Explain what it means for investors
+- Include historical context
+- Provide actionable advice
 
 🔥 TRENDING TOPICS FOR LONG-FORM (HIGH SEARCH VOLUME):
 - Bitcoin price reaction to Fed rate cut (500K searches)
@@ -305,6 +454,7 @@ REQUIREMENTS:
 ✅ Include HIGH-VOLUME KEYWORD naturally
 ✅ AVOID: Generic titles like "Bitcoin Update" or "Market News"
 ✅ Must be suitable for 7-9 minute deep-dive
+✅ Match the category: {categoria_seleccionada}
 
 For each idea provide:
 - Title (with formula used and SEO keyword)
@@ -323,7 +473,7 @@ Then SELECT THE BEST ONE and return in JSON format:
         "description": "What viewers will learn",
         "formula_used": "Name of formula",
         "psychology_trigger": "curiosity/fear/greed/education/urgency",
-        "type": "{tipo}",
+        "type": "{categoria_seleccionada}",
         "estimated_duration": "7-9 minutes",
         "seo_keywords": ["keyword1", "keyword2", "keyword3"],
         "estimated_views": "50K-200K"
@@ -350,7 +500,6 @@ Then SELECT THE BEST ONE and return in JSON format:
         data = r.json()
         content = data["choices"][0]["message"]["content"]
         
-        # Limpiar contenido
         content = content.strip()
         if "```json" in content:
             content = content.replace("```json", "").replace("```", "").strip()
@@ -366,7 +515,7 @@ Then SELECT THE BEST ONE and return in JSON format:
         return None
 
 # ================================================================
-# 🏷️ SANITIZAR HASHTAGS Y TAGS (ÉLITE SEO)
+# ️ SANITIZAR HASHTAGS Y TAGS (ÉLITE SEO)
 # ================================================================
 def sanitizar_hashtags(hashtags_str, max_tags=8):
     if not hashtags_str:
@@ -414,7 +563,7 @@ def sanitizar_tags(tags_str, max_tags=30):
     return cleaned_unique
 
 # ================================================================
-# 🎵 MÚSICA
+#  MÚSICA
 # ================================================================
 FONDOS_DISPONIBLES = [
     "The Ascent.mp3",
@@ -586,6 +735,8 @@ def generar_imagen_horizontal(prompt, tema="", bloque="", intentos=5):
         "trading": "trading charts candlestick graph",
         "analysis": "financial analysis data charts",
         "guide": "educational finance tutorial",
+        "history": "historical financial documents vintage",
+        "education": "educational infographic clean charts",
     }
     
     base_query = "finance business stock market charts"
@@ -620,7 +771,7 @@ def generar_imagen_horizontal(prompt, tema="", bloque="", intentos=5):
         headers = {"Authorization": PEXELS_API_KEY}
         
         try:
-            print(f"   ️ Pexels search: '{current_query}' (Intento {intento+1}/{intentos})")
+            print(f"   🖼️ Pexels search: '{current_query}' (Intento {intento+1}/{intentos})")
             r = requests.get(url, headers=headers, timeout=30)
             
             if r.status_code == 200:
@@ -632,7 +783,7 @@ def generar_imagen_horizontal(prompt, tema="", bloque="", intentos=5):
                         img_url = photo["src"].get("landscape") or photo["src"].get("original")
                         
                         if img_url in _used_image_urls:
-                            print(f"   ️ Image already used, searching another...")
+                            print(f"   ⚠️ Image already used, searching another...")
                             continue
                         
                         _used_image_urls.add(img_url)
@@ -684,7 +835,7 @@ def obtener_ruta_fuente():
     return None
 
 # ================================================================
-# 🖼️ MINIATURA PROFESIONAL HIGH-CTR (ÉLITE SEO)
+# ️ MINIATURA PROFESIONAL HIGH-CTR (ÉLITE SEO)
 # ================================================================
 def crear_miniatura_profesional(prompt_miniatura, texto_portada, salida="miniatura_largo_en.jpg"):
     """
@@ -693,7 +844,6 @@ def crear_miniatura_profesional(prompt_miniatura, texto_portada, salida="miniatu
     try:
         print("🖼️ Generating LONG VIDEO thumbnail (ÉLITE SEO - professional)...")
         
-        # Prompt específico para LARGOS - más profesional
         prompt_largo = (
             f"{prompt_miniatura}, "
             "professional documentary style, "
@@ -712,7 +862,7 @@ def crear_miniatura_profesional(prompt_miniatura, texto_portada, salida="miniatu
                 with open(img_path, "wb") as f:
                     f.write(r.content)
             except Exception as e:
-                print(f"⚠️ Error downloading background: {e}. Using solid background.")
+                print(f"️ Error downloading background: {e}. Using solid background.")
                 img_path = generar_fondo_solido(color=(10, 10, 25), ancho=1280, alto=720)
         else:
             img_path = generar_fondo_solido(color=(10, 10, 25), ancho=1280, alto=720)
@@ -721,7 +871,6 @@ def crear_miniatura_profesional(prompt_miniatura, texto_portada, salida="miniatu
         img = ImageOps.fit(img, (1280, 720), Image.Resampling.LANCZOS)
         draw = ImageDraw.Draw(img)
         
-        # TEXTO PARA LARGOS - Hasta 5 palabras, más descriptivo
         texto = texto_portada.upper().strip()
         palabras = texto.split()
         
@@ -737,8 +886,7 @@ def crear_miniatura_profesional(prompt_miniatura, texto_portada, salida="miniatu
         
         ruta_fuente = obtener_ruta_fuente()
         
-        # FUENTE un poco MÁS PEQUEÑA para LARGOS
-        size = 140  # Más pequeño que en shorts (180)
+        size = 140
         while size >= 80:
             if ruta_fuente:
                 font = ImageFont.truetype(ruta_fuente, size)
@@ -760,12 +908,11 @@ def crear_miniatura_profesional(prompt_miniatura, texto_portada, salida="miniatu
         alto_total = alto_linea * len(lineas)
         y_inicio = (720 - alto_total) // 2
         
-        # Sombra estándar
         offset = 8
         for i, linea in enumerate(lineas):
             bbox = draw.textbbox((0, 0), linea, font=font)
             text_w = bbox[2] - bbox[0]
-            x = 1280 - text_w - 80  # Más espacio
+            x = 1280 - text_w - 80
             y = y_inicio + i * alto_linea
             
             for dx in range(-offset, offset+1, 2):
@@ -774,18 +921,16 @@ def crear_miniatura_profesional(prompt_miniatura, texto_portada, salida="miniatu
             
             draw.text((x, y), linea, fill='black', font=font)
         
-        # Texto AMARILLO DORADO (más profesional)
         for i, linea in enumerate(lineas):
             bbox = draw.textbbox((0, 0), linea, font=font)
             text_w = bbox[2] - bbox[0]
             x = 1280 - text_w - 80
             y = y_inicio + i * alto_linea
             
-            draw.text((x, y), linea, fill=(255, 215, 0), font=font)  # #FFD700 (gold)
+            draw.text((x, y), linea, fill=(255, 215, 0), font=font)
             draw.text((x-1, y), linea, fill=(255, 225, 80), font=font)
             draw.text((x+1, y), linea, fill=(255, 225, 80), font=font)
         
-        # Borde ROJO más DELGADO para LARGOS
         draw.rectangle([(1200, 50), (1260, 670)], outline=(255, 100, 100), width=4)
         
         img.save(salida, quality=95)
@@ -800,7 +945,7 @@ def crear_miniatura_profesional(prompt_miniatura, texto_portada, salida="miniatu
         return None
 
 # ================================================================
-#  SUBTÍTULOS
+# 📝 SUBTÍTULOS
 # ================================================================
 def agregar_subtitulos_con_pil_16_9(imagen_path, texto, salida_path):
     try:
@@ -848,7 +993,7 @@ def agregar_subtitulos_con_pil_16_9(imagen_path, texto, salida_path):
         return imagen_path
 
 # ================================================================
-# ️ GENERAR AUDIO (VOZ ÉLITE)
+# 🎙️ GENERAR AUDIO (VOZ ÉLITE)
 # ================================================================
 def generar_audio(texto, index):
     global CONFIG_VOZ_ACTUAL
@@ -909,13 +1054,13 @@ def crear_capitulo_visual_pil(titulo_capitulo, timestamp, duracion=3, ancho=1280
         return None
 
 # ================================================================
-# 📣 CTA FINAL
+#  CTA FINAL
 # ================================================================
 def crear_cta_final_pil(duracion=3, ancho=1280, alto=720):
     try:
         img = Image.new('RGB', (ancho, alto), (15, 15, 20))
         draw = ImageDraw.Draw(img)
-        texto = "🔴 SUBSCRIBE"
+        texto = " SUBSCRIBE"
         try:
             font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 40)
         except:
@@ -961,7 +1106,6 @@ def generar_guion_largo(tipo, fecha_actual, idea=None):
     tema_elegido = idea["title"]
     hook_sugerido = idea.get("hook_30sec", "")
     
-    # CORRECCIÓN: Mover expresiones complejas fuera del f-string
     prompt = f"""
 You are a PROFESSIONAL SCRIPTWRITER and FINANCE EXPERT for YouTube LONG-FORM videos (7-9 minutes).
 
@@ -1105,7 +1249,6 @@ RESPONSE IN JSON FORMAT:
             data = r.json()
             content = data["choices"][0]["message"]["content"]
             
-            # Limpiar contenido
             content = content.strip()
             if "```json" in content:
                 content = content.replace("```json", "").replace("```", "").strip()
@@ -1123,7 +1266,7 @@ RESPONSE IN JSON FORMAT:
             print(f"📊 Script words: {palabras}")
             
             if palabras < 1100:
-                print(f"⚠️ Script too short ({palabras} words). Adjusting...")
+                print(f"️ Script too short ({palabras} words). Adjusting...")
                 global VOZ_FIJA, CONFIG_VOZ_ACTUAL
                 VOZ_FIJA = {"voz": "en-US-JennyNeural", "velocidad": "+5%", "tono": "-1Hz"}
                 CONFIG_VOZ_ACTUAL = VOZ_FIJA
@@ -1150,7 +1293,7 @@ RESPONSE IN JSON FORMAT:
     sys.exit(1)
 
 # ================================================================
-#  MONTAR VIDEO LARGO CON EFECTOS
+# 🎬 MONTAR VIDEO LARGO CON EFECTOS
 # ================================================================
 def montar_video_largo(recursos, fondo_path, salida="largo_capital_en.mp4", capitulos=None):
     if not recursos:
@@ -1175,7 +1318,7 @@ def montar_video_largo(recursos, fondo_path, salida="largo_capital_en.mp4", capi
                     with open(img_path, "wb") as f:
                         f.write(r.content)
                 except Exception as e:
-                    print(f"⚠️ Failed to download image {i}: {e}")
+                    print(f"️ Failed to download image {i}: {e}")
                     img_path = generar_fondo_solido()
             else:
                 img_path = img_url
@@ -1187,28 +1330,22 @@ def montar_video_largo(recursos, fondo_path, salida="largo_capital_en.mp4", capi
             img_sub_path = f"temp_largo_sub_en_{i}.jpg"
             img_path = agregar_subtitulos_con_pil_16_9(img_path, texto, img_sub_path)
             
-            # Efectos dinámicos según el bloque
             video_clip = ImageClip(img_path).set_duration(duracion)
             
             if bloque == "HOOK":
-                # Zoom rápido en hook
                 video_clip = video_clip.resize(lambda t: 1.1 - 0.05 * min(t/2, 1.0))
             elif bloque in ["CHAPTER 1", "CHAPTER 2", "CHAPTER 3"]:
-                # Zoom lento y constante
                 video_clip = video_clip.resize(lambda t: 1.0 + 0.01 * t)
             elif bloque == "CLOSE":
-                # Zoom out
                 video_clip = video_clip.resize(lambda t: 1.0 - 0.01 * min(t/3, 0.1))
             else:
-                # Zoom suave por defecto
                 video_clip = video_clip.resize(lambda t: 1 + 0.015 * t)
             
         except Exception as e:
-            print(f"️ Failed image {i}: {e}")
+            print(f"⚠️ Failed image {i}: {e}")
             img_path = generar_fondo_solido()
             video_clip = ImageClip(img_path, duration=duracion).resize(lambda t: 1 + 0.015 * t)
         
-        # Agregar capítulo visual si existe
         if capitulos and i < len(capitulos):
             cap_titulo = capitulos[i].get("bloque", "")
             cap_timestamp = capitulos[i].get("timestamp", f"{i:02d}:00")
@@ -1225,7 +1362,6 @@ def montar_video_largo(recursos, fondo_path, salida="largo_capital_en.mp4", capi
             silencio = AudioClip(lambda t: 0, duration=duracion)
             clips_audio.append(silencio)
     
-    # Concatenar audio con pausas
     PAUSA = 0.3
     audio_final_parts = []
     for i, aud in enumerate(clips_audio):
@@ -1236,17 +1372,14 @@ def montar_video_largo(recursos, fondo_path, salida="largo_capital_en.mp4", capi
     audio_narracion = concatenate_audioclips(audio_final_parts)
     duracion_total = audio_narracion.duration
     
-    # Concatenar video
     video = concatenate_videoclips(clips_video, method="compose")
     video = video.set_duration(duracion_total)
     
-    # Agregar CTA final
     cta_clip = crear_cta_final_pil(duracion=3)
     if cta_clip:
         video = concatenate_videoclips([video, cta_clip], method="compose")
         duracion_total += 3
     
-    # Agregar música de fondo
     if fondo_path and os.path.exists(fondo_path):
         try:
             fondo_clip = AudioFileClip(fondo_path)
@@ -1265,7 +1398,7 @@ def montar_video_largo(recursos, fondo_path, salida="largo_capital_en.mp4", capi
     return salida
 
 # ================================================================
-# 📤 SUBIR A YOUTUBE (SEO ÉLITE)
+#  SUBIR A YOUTUBE (SEO ÉLITE)
 # ================================================================
 def subir_a_youtube(video_path, titulo, etiquetas_str, descripcion, miniatura_path=None, dynamic_hashtags="", seo_description=""):
     try:
@@ -1277,7 +1410,7 @@ def subir_a_youtube(video_path, titulo, etiquetas_str, descripcion, miniatura_pa
     
     tags = sanitizar_tags(etiquetas_str)
     if not tags:
-        print("️ No valid tags found. Using default tags.")
+        print("⚠️ No valid tags found. Using default tags.")
         tags = ["finance", "investing", "crypto", "trading", "analysis"]
     
     tags_str_final = ",".join(tags)
@@ -1344,13 +1477,13 @@ def limpiar_archivos_temporales():
         for f in glob.glob(patron):
             try:
                 os.remove(f)
-                print(f"🧹 Removed: {f}")
+                print(f" Removed: {f}")
             except:
                 pass
     print("✅ Cleanup completed")
 
 # ================================================================
-#  INICIALIZAR ARCHIVOS JSON
+# 📄 INICIALIZAR ARCHIVOS JSON
 # ================================================================
 def inicializar_archivos_json():
     """Crear archivos JSON si no existen"""
@@ -1366,12 +1499,12 @@ def inicializar_archivos_json():
     
     for archivo, contenido_default in archivos_needed.items():
         if not os.path.exists(archivo):
-            print(f"📄 Creating missing file: {archivo}")
+            print(f" Creating missing file: {archivo}")
             with open(archivo, "w", encoding="utf-8") as f:
                 json.dump(contenido_default, f, indent=2, ensure_ascii=False)
 
 # ================================================================
-#  MAIN - ÉLITE SEO
+# 🎯 MAIN - ÉLITE SEO
 # ================================================================
 def main():
     global _used_image_urls
@@ -1381,6 +1514,9 @@ def main():
     
     print("="*60)
     print("🎬 Capital Minds - LONG VIDEO BOT (ÉLITE SEO)")
+    print("   ✓ 90% Educational/Historical Content")
+    print("   ✓ 10% Breaking News Only")
+    print("   ✓ 1 Video Every 2 Days")
     print("   ✓ Viral title formulas with SEO")
     print("   ✓ High-retention script structure")
     print("   ✓ High-CTR thumbnails (gold on black)")
@@ -1416,20 +1552,19 @@ def main():
         print(f"✅ Already published {META_DIARIA_LARGOS} long video today. Exiting.")
         sys.exit(0)
     
-    # Analizar trends semanales
     trends_data = None
     try:
         with open(TRENDS_FILE, "r", encoding="utf-8") as f:
             trends_data = json.load(f)
-            print(f"   📈 Using trending topic: {trends_data.get('best_topic_this_week', 'N/A')}")
+            print(f"    Using trending topic: {trends_data.get('best_topic_this_week', 'N/A')}")
     except:
-        # Si no existe o hay error, generar nuevo análisis
         print("📊 Generating weekly trends analysis...")
         trends_data = analizar_trends_semanal_largos()
     
-    tipos = ["news", "educational", "psychology", "analysis"]
-    tipo = random.choice(tipos)
-    print(f"📌 Type: {tipo.upper()}")
+    # 🔧 SELECCIONAR TIPO BASADO EN PESOS (90% educativo/histórico, 10% noticias)
+    tipo, tema_sugerido = seleccionar_categoria()
+    print(f"📌 Content Type: {tipo.upper()} (Weight: {CATEGORIAS_CONTENIDO[tipo]['peso']}%)")
+    print(f"📝 Suggested Topic: {tema_sugerido}")
     
     estado = cargar_estado()
     fondo_path = seleccionar_fondo_disponible(estado)
@@ -1437,7 +1572,7 @@ def main():
     paleta_video = random.choice(PALETAS_VIDEO)
     print(f"🎨 Color palette for this video: {paleta_video}")
     
-    print("💡 Generating viral video idea (ÉLITE SEO)...")
+    print(" Generating viral video idea (ÉLITE SEO)...")
     idea_data = generar_idea_video_largo(tipo, fecha_formateada, trends_data)
     if idea_data and "best_idea" in idea_data:
         idea = idea_data["best_idea"]
@@ -1459,7 +1594,7 @@ def main():
     dynamic_hashtags = guion.get("dynamic_hashtags", "")
     seo_description = guion.get("seo_optimized_description", "")
     
-    print(f"️ Title: {titulo}")
+    print(f"🏷️ Title: {titulo}")
     print(f"🏷️ Dynamic hashtags: {dynamic_hashtags}")
     print(f"🔑 SEO Keywords: {', '.join(guion.get('keywords', [])[:3])}")
     
@@ -1470,16 +1605,14 @@ def main():
             "timestamp": seg.get("timestamp", "0:00")
         })
     
-    # Generar imágenes
-    print("\n️ Generating segment-specific images via Pexels...")
+    print("\n🖼️ Generating segment-specific images via Pexels...")
     imagenes_generadas = []
     for idx, seg in enumerate(segmentos):
         print(f"🎬 Segment {idx+1}/{len(segmentos)} - {seg.get('block', '')}")
         prompt_img = seg.get("image_prompt", "")
         bloque = seg.get("block", "")
-        print(f"   📝 Prompt: {prompt_img[:120]}...")
+        print(f"    Prompt: {prompt_img[:120]}...")
         
-        # 5 intentos con 6 segundos de espera
         img_url = None
         for intento in range(5):
             img_url = generar_imagen_horizontal(prompt_img, tema=tema, bloque=bloque, intentos=1)
@@ -1498,7 +1631,6 @@ def main():
         
         time.sleep(2)
 
-    # Reutilizar imágenes para fallos
     print("\n🔄 SECOND PASS: Reusing images for failed segments...")
     def obtener_imagen_disponible(idx, imagenes):
         for i in range(idx - 1, -1, -1):
@@ -1519,11 +1651,10 @@ def main():
                 imagenes_generadas[idx] = generar_fondo_solido()
                 print(f"   🖼️ Segment {idx+1}: using solid background")
 
-    # Generar audio y recursos
     print("\n🎵 Generating audio and building resources...")
     recursos = []
     for idx, seg in enumerate(segmentos):
-        print(f" Generating audio for segment {idx+1}/{len(segmentos)}")
+        print(f"️ Generating audio for segment {idx+1}/{len(segmentos)}")
         audio_path = generar_audio(seg["text"], idx)
         if not audio_path:
             continue
@@ -1547,10 +1678,9 @@ def main():
     video_path = montar_video_largo(recursos, fondo_path, "largo_capital_en.mp4", capitulos)
     print(f"🎬 Video assembled: {video_path}")
     
-    # Miniatura
     miniatura_path = None
     print("🖼️ Generating professional thumbnail...")
-    prompt_miniatura_final = prompt_miniatura  # Ya viene optimizado del prompt
+    prompt_miniatura_final = prompt_miniatura
     miniatura_path = crear_miniatura_profesional(
         prompt_miniatura_final,
         palabras_portada,
@@ -1569,6 +1699,7 @@ def main():
     limpiar_archivos_temporales()
     
     print(f"✅ Published: https://youtu.be/{video_id}")
+    print(f"📊 Content Type: {tipo.upper()}")
     print(f"📊 SEO Score: Optimized for maximum visibility")
 
 if __name__ == "__main__":
