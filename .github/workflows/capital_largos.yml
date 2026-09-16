@@ -2,10 +2,8 @@ name: Bot YouTube - Video Largo Capital Digital (1 cada 2 días)
 
 on:
   schedule:
-    # Día 1: 3:23 PM CDMX
-    - cron: '23 21 */2 * *'   # Cada 2 días (días impares)
-    # Día 2: 3:23 PM CDMX  
-    - cron: '23 21 */2 * *'   # Cada 2 días (días pares)
+    # Ejecutar cada 2 días a las 3:23 PM CDMX (21:23 UTC)
+    - cron: '23 21 */2 * *'
   workflow_dispatch:
 
 permissions:
@@ -14,6 +12,7 @@ permissions:
 jobs:
   publicar:
     runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.schedule == '23 21 */2 * *' }}
     steps:
       - name: Checkout repositorio
         uses: actions/checkout@v4
