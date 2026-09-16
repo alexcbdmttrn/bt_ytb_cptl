@@ -12,7 +12,6 @@ permissions:
 jobs:
   publicar:
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.schedule == '23 21 */2 * *' }}
     steps:
       - name: Checkout repositorio
         uses: actions/checkout@v4
