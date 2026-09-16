@@ -1,4 +1,7 @@
 {
-  "ultimo_fondo": "./The Ascent.mp3",
-  "publicaciones_hoy": null
+  "ultimo_fondo": "Binary Pulse.mp3",
+  "publicaciones_hoy": {
+    "fecha": "2026-09-16",
+    "cantidad": 0
+  }
 }
