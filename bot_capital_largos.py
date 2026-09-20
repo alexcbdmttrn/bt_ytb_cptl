@@ -48,16 +48,16 @@ TEMAS_PUBLICADOS_FILE_ES = "temas_largos_publicados.json"
 META_DIARIA_LARGOS = 1
 DIAS_SIN_REPETIR_TEMA = 45
 
-# 🚫 TEMAS PROHIBIDOS (para evitar repetición excesiva)
-TEMAS_PROHIBIDOS_FRECUENTES = [
-    "federal reserve", "fed rate", "fomc", "interest rate decision",
-    "jerome powell", "fed meeting", "rate hike", "rate cut"
+# 🚫 Palabras prohibidas para evitar el exceso de Fed
+PALABRAS_ANTI_FED = [
+    "fed", "fomc", "powell", "rate decision", "rate hike",
+    "rate cut", "federal reserve", "jerome powell"
 ]
 
 _used_image_urls = set()
 
 # ================================================================
-# VOZ ÉLITE
+# VOZ FIJA (sin espacios basura)
 # ================================================================
 VOZ_FIJA = {
     "voz": "en-US-JennyNeural",
@@ -68,7 +68,7 @@ VOZ_FIJA = {
 CONFIG_VOZ_ACTUAL = VOZ_FIJA
 
 # ================================================================
-# 📚 CATEGORÍAS DE CONTENIDO (90% educativo/histórico, 10% noticias)
+# CATEGORÍAS DE CONTENIDO (90% educ/hist, 10% news)
 # ================================================================
 CATEGORIAS_CONTENIDO = {
     "educational": {
@@ -161,8 +161,33 @@ CATEGORIAS_CONTENIDO = {
     }
 }
 
+# ================================================================
+# VERIFICAR SI HAY CONTENIDO RECIENTE DE FED
+# ================================================================
+def verificar_fed_reciente(dias=15):
+    """
+    Verifica si en los últimos N días se publicó contenido con 'Fed', 'FOMC', 'Powell', etc.
+    Si sí, prohíbe generar más sobre esos temas por un tiempo.
+    """
+    temas = cargar_temas_publicados()
+    hoy = datetime.now(ZoneInfo("America/Mexico_City")).date()
+    
+    for t in temas:
+        try:
+            fecha_tema = datetime.strptime(t["fecha"], "%Y-%m-%d").date()
+            if (hoy - fecha_tema).days <= dias:
+                tema_lower = t["tema"].lower()
+                if any(p in tema_lower for p in PALABRAS_ANTI_FED):
+                    return True
+        except:
+            continue
+    return False
+
+# ================================================================
+# SELECCIONAR CATEGORÍA (evita repetir temas y Fed)
+# ================================================================
 def seleccionar_categoria():
-    """Selecciona categoría basada en pesos y evita temas prohibidos recientes."""
+    """Selecciona categoría y tema evitando repeticiones y Fed."""
     temas_pub = cargar_temas_publicados()
     hoy = datetime.now(ZoneInfo("America/Mexico_City")).date()
     
@@ -175,7 +200,10 @@ def seleccionar_categoria():
         except:
             continue
     
-    # Intentar hasta 10 veces encontrar un tema no repetido
+    fed_prohibida = verificar_fed_reciente(dias=15)
+    if fed_prohibida:
+        print("🚫 Fed content detected recently. Excluding news category...")
+    
     for _ in range(10):
         total_peso = sum(cat["peso"] for cat in CATEGORIAS_CONTENIDO.values())
         numero_aleatorio = random.uniform(0, total_peso)
@@ -184,20 +212,31 @@ def seleccionar_categoria():
         for categoria, datos in CATEGORIAS_CONTENIDO.items():
             peso_acumulado += datos["peso"]
             if numero_aleatorio <= peso_acumulado:
+                # Si Fed está prohibida, saltar la categoría "news"
+                if fed_prohibida and categoria == "news":
+                    continue
+                
                 temas_disponibles = [
                     t for t in datos["temas"]
                     if t.lower() not in temas_recientes_30d
                 ]
+                
+                # Filtrar temas que mencionen Fed (por seguridad)
+                if fed_prohibida:
+                    temas_disponibles = [
+                        t for t in temas_disponibles
+                        if not any(p in t.lower() for p in PALABRAS_ANTI_FED)
+                    ]
+                
                 if temas_disponibles:
                     return categoria, random.choice(temas_disponibles)
                 else:
-                    # Si todos están usados, devolver aleatorio de todas formas
                     return categoria, random.choice(datos["temas"])
     
     return "educational", random.choice(CATEGORIAS_CONTENIDO["educational"]["temas"])
 
 # ================================================================
-# 🎨 PALETAS Y SUJETOS VISUALES
+# PALETAS Y SUJETOS VISUALES
 # ================================================================
 PALETAS_VIDEO = [
     "electric cyan and gold neon on dark navy",
@@ -233,7 +272,7 @@ def detectar_sujeto_visual(texto_ref):
     return "a cinematic financial scene with glowing charts, coins and data"
 
 # ================================================================
-# 📊 ANÁLISIS SEMANAL DE TRENDS (SIN SESGO DE FED)
+# ANÁLISIS SEMANAL DE TRENDS (SIN SESGO FED)
 # ================================================================
 def analizar_trends_semanal_largos():
     temas_pub = cargar_temas_publicados()
@@ -263,12 +302,12 @@ RECENTLY PUBLISHED TOPICS (avoid repeating):
 🎯 YOUR TASK: Generate 5 DIVERSE video topics for LONG-FORM content (7-9 min).
 
 CONTENT MIX PREFERRED:
-- 40% Educational (how-to, tutorials, explanations of concepts)
-- 35% Historical (past events, case studies, lessons learned)
-- 15% Analysis (cycles, patterns, data-driven insights)
+- 40% Educational (how-to, tutorials, explanations)
+- 35% Historical (past events, case studies, lessons)
+- 15% Analysis (cycles, patterns, data-driven)
 - 10% Major news (ONLY if truly major, NOT Fed-related)
 
-DIVERSITY REQUIREMENT: Each of the 5 topics MUST be from a DIFFERENT category (Blockchain tech, History, DeFi, Psychology, Investing basics, Regulations, Altcoins, etc.)
+DIVERSITY REQUIREMENT: Each of the 5 topics MUST be from a DIFFERENT category.
 
 For each topic provide:
 - topic: Topic name
@@ -332,13 +371,27 @@ Return JSON:
         return None
 
 # ================================================================
-# 🎬 GENERAR IDEA DE VIDEO (SIN SESGO DE FED)
+# GENERAR IDEA DE VIDEO (CON FILTRO ANTI-FED)
 # ================================================================
 def generar_idea_video_largo(tipo, fecha_actual, trends_data=None):
     categoria_seleccionada, tema_sugerido = seleccionar_categoria()
     
     print(f"📚 Category: {categoria_seleccionada.upper()}")
     print(f"📝 Topic: {tema_sugerido}")
+    
+    fed_prohibida = verificar_fed_reciente(dias=15)
+    fed_instruction = ""
+    if fed_prohibida:
+        fed_instruction = """
+🚫 CRITICAL PROHIBITION (ACTIVE):
+We have published content about Fed/FOMC/Powell in the last 15 days.
+ABSOLUTELY DO NOT create titles, topics, or hooks about:
+- Federal Reserve / Fed rate decisions / FOMC
+- Jerome Powell
+- Interest rate hikes or cuts
+- Rate decision news
+Focus ONLY on educational, historical, or technical analysis content.
+"""
     
     seo_keywords = []
     if trends_data and "high_volume_keywords" in trends_data:
@@ -353,12 +406,7 @@ CURRENT DATE: {fecha_actual}
 CONTENT CATEGORY: {categoria_seleccionada.upper()}
 SUGGESTED TOPIC: {tema_sugerido}
 
-🚫 CRITICAL PROHIBITION: DO NOT create titles or topics about:
-- Federal Reserve / Fed rate decisions / FOMC
-- Jerome Powell
-- Interest rate hikes or cuts
-- Rate decision news
-We have already covered those topics extensively. Focus on DIVERSE educational and historical content.
+{fed_instruction}
 
 🎯 HIGH-VOLUME SEO KEYWORDS TO INTEGRATE:
 {keywords_text}
@@ -376,17 +424,14 @@ If HISTORICAL:
 - Include specific events
 - Show cause and effect
 - Extract lessons learned
-- Connect past to present
 
 If ANALYSIS:
 - Use data and charts
 - Show patterns and trends
 - Compare different scenarios
-- Provide actionable insights
 
 If NEWS (only 10%):
 - Focus on IMPACT
-- Explain what it means for investors
 - Include historical context
 
 🎯 YOUR TASK: Generate 5 LONG-FORM VIDEO IDEAS optimized for SEO and virality.
@@ -451,10 +496,9 @@ Then SELECT THE BEST ONE and return in JSON:
                 json_str = content[inicio:fin+1]
                 result = json.loads(json_str)
                 
-                # Verificar que el título no mencione Fed
                 titulo_gen = result.get("best_idea", {}).get("title", "").lower()
-                if any(p in titulo_gen for p in TEMAS_PROHIBIDOS_FRECUENTES):
-                    print(f"⚠️ Title contains prohibited topic, regenerating...")
+                if fed_prohibida and any(p in titulo_gen for p in PALABRAS_ANTI_FED):
+                    print(f"⚠️ Fed topic detected in title. Regenerating...")
                     if intento < 2:
                         continue
                 
@@ -466,7 +510,7 @@ Then SELECT THE BEST ONE and return in JSON:
     return None
 
 # ================================================================
-# 🏷️ SANITIZAR HASHTAGS Y TAGS (CORREGIDO)
+# SANITIZAR HASHTAGS Y TAGS (CORREGIDO SIN PERDER ESPACIOS INTERNOS)
 # ================================================================
 def sanitizar_hashtags(hashtags_str, max_tags=8):
     if not hashtags_str:
@@ -485,15 +529,15 @@ def sanitizar_hashtags(hashtags_str, max_tags=8):
     cleaned = cleaned[:max_tags]
     return " ".join(cleaned)
 
-def sanitizar_tags(tags_str, max_tags=20):
+def sanitizar_tags(tags_str, max_tags=20, max_chars=480):
     """
-    Sanitización agresiva para evitar error 400 de YouTube.
-    - Máximo 20 tags
-    - Cada tag máximo 25 caracteres
-    - Solo letras, números y espacios simples
-    - Sin caracteres especiales
-    - Sin comas dobles
-    - Elimina tags de más de 3 palabras
+    Sanitización ÓPTIMA para YouTube:
+    - MANTIENE espacios internos (bitcoin mining) → CRUCIAL para SEO
+    - Elimina espacios al inicio/final y espacios dobles
+    - Elimina caracteres especiales
+    - Limita cada tag a 30 caracteres
+    - Limita total a max_chars
+    - Máximo max_tags tags
     """
     if not tags_str:
         return []
@@ -502,27 +546,20 @@ def sanitizar_tags(tags_str, max_tags=20):
     
     cleaned = []
     for tag in raw_tags:
-        # Solo permitir letras, números y espacios
+        # Solo permitir letras, números y espacios simples
         clean = re.sub(r'[^a-zA-Z0-9áéíóúüñÁÉÍÓÚÜÑ\s]', '', tag)
-        clean = clean.strip()
-        clean = re.sub(r'\s+', ' ', clean)
+        # Normalizar espacios dobles y eliminar al inicio/final
+        clean = re.sub(r'\s+', ' ', clean).strip()
         
-        # Validaciones estrictas
-        if not clean:
+        # Validaciones
+        if not clean or len(clean) < 2:
             continue
-        if len(clean) < 2:
-            continue
-        if len(clean) > 25:
-            clean = clean[:25]
-        
-        # Máximo 3 palabras
-        palabras = clean.split()
-        if len(palabras) > 3:
-            clean = ' '.join(palabras[:3])
+        if len(clean) > 30:
+            clean = clean[:30].strip()
         
         cleaned.append(clean)
     
-    # Eliminar duplicados
+    # Eliminar duplicados (case-insensitive)
     seen = set()
     unique = []
     for tag in cleaned:
@@ -531,19 +568,24 @@ def sanitizar_tags(tags_str, max_tags=20):
             seen.add(tag_lower)
             unique.append(tag)
     
-    # Limitar a max_tags
+    # Limitar cantidad
     unique = unique[:max_tags]
     
-    # Verificar longitud total
-    result = ",".join(unique)
-    while len(result) > 480 and len(unique) > 5:
-        unique = unique[:-1]
-        result = ",".join(unique)
+    # Limitar longitud total
+    result = []
+    total_chars = 0
+    for tag in unique:
+        # +1 por la coma
+        if total_chars + len(tag) + 1 <= max_chars:
+            result.append(tag)
+            total_chars += len(tag) + 1
+        else:
+            break
     
-    return unique
+    return result
 
 # ================================================================
-# 🎵 MÚSICA
+# MÚSICA
 # ================================================================
 FONDOS_DISPONIBLES = [
     "The Ascent.mp3",
@@ -571,7 +613,7 @@ def seleccionar_fondo_disponible(estado):
     return seleccionada
 
 # ================================================================
-# 📂 FUNCIONES DE ESTADO
+# FUNCIONES DE ESTADO
 # ================================================================
 def cargar_estado():
     try:
@@ -690,7 +732,7 @@ def tema_ya_publicado(tema, dias=45):
     return False
 
 # ================================================================
-# 🖼️ GENERAR IMAGEN HORIZONTAL (PEXELS)
+# GENERAR IMAGEN (PEXELS)
 # ================================================================
 def generar_imagen_horizontal(prompt, tema="", bloque="", intentos=5):
     global _used_image_urls
@@ -772,7 +814,7 @@ def generar_imagen_horizontal(prompt, tema="", bloque="", intentos=5):
     return None
 
 # ================================================================
-# 🎨 FONDO SÓLIDO
+# FONDO SÓLIDO
 # ================================================================
 def generar_fondo_solido(color=(20, 20, 50), ancho=1280, alto=720):
     img = Image.new('RGB', (ancho, alto), color)
@@ -781,7 +823,7 @@ def generar_fondo_solido(color=(20, 20, 50), ancho=1280, alto=720):
     return path
 
 # ================================================================
-# 🔤 FUENTE
+# FUENTE
 # ================================================================
 def obtener_ruta_fuente():
     if not os.path.exists("Anton.ttf"):
@@ -805,7 +847,7 @@ def obtener_ruta_fuente():
     return None
 
 # ================================================================
-# 🖼️ MINIATURA PROFESIONAL
+# MINIATURA PROFESIONAL
 # ================================================================
 def crear_miniatura_profesional(prompt_miniatura, texto_portada, salida="miniatura_largo_en.jpg"):
     try:
@@ -899,7 +941,7 @@ def crear_miniatura_profesional(prompt_miniatura, texto_portada, salida="miniatu
         return None
 
 # ================================================================
-# 📝 SUBTÍTULOS
+# SUBTÍTULOS
 # ================================================================
 def agregar_subtitulos_con_pil_16_9(imagen_path, texto, salida_path):
     try:
@@ -947,7 +989,7 @@ def agregar_subtitulos_con_pil_16_9(imagen_path, texto, salida_path):
         return imagen_path
 
 # ================================================================
-# 🎙️ GENERAR AUDIO
+# GENERAR AUDIO
 # ================================================================
 def generar_audio(texto, index):
     global CONFIG_VOZ_ACTUAL
@@ -971,7 +1013,7 @@ def generar_audio(texto, index):
         return None
 
 # ================================================================
-# 📺 CAPÍTULOS VISUALES
+# CAPÍTULOS VISUALES
 # ================================================================
 def crear_capitulo_visual_pil(titulo_capitulo, timestamp, duracion=3, ancho=1280, alto=720):
     try:
@@ -1005,7 +1047,7 @@ def crear_capitulo_visual_pil(titulo_capitulo, timestamp, duracion=3, ancho=1280
         return None
 
 # ================================================================
-# 🔴 CTA FINAL
+# CTA FINAL
 # ================================================================
 def crear_cta_final_pil(duracion=3, ancho=1280, alto=720):
     try:
@@ -1034,7 +1076,7 @@ def crear_cta_final_pil(duracion=3, ancho=1280, alto=720):
         return None
 
 # ================================================================
-# 📝 GENERAR GUION LARGO
+# GENERAR GUION LARGO
 # ================================================================
 def generar_guion_largo(tipo, fecha_actual, idea=None):
     titulos_pub = cargar_titulos_publicados()["titulos"][-10:]
@@ -1052,6 +1094,16 @@ def generar_guion_largo(tipo, fecha_actual, idea=None):
     tema_elegido = idea["title"]
     hook_sugerido = idea.get("hook_30sec", "")
     
+    fed_prohibida = verificar_fed_reciente(dias=15)
+    fed_instruction = ""
+    if fed_prohibida:
+        fed_instruction = """
+🚫 CRITICAL PROHIBITION (ACTIVE):
+DO NOT mention Federal Reserve, Fed rate, FOMC, Jerome Powell, or interest rate decisions in the script.
+We have recently published content about those topics and must maintain variety.
+Focus on educational, historical, or technical content instead.
+"""
+    
     prompt = f"""
 You are a PROFESSIONAL SCRIPTWRITER for YouTube LONG-FORM videos (7-9 minutes).
 
@@ -1060,8 +1112,10 @@ HOOK: "{hook_sugerido}"
 TYPE: {tipo.upper()}
 CURRENT DATE: {fecha_actual}
 
+{fed_instruction}
+
+DATE RULE:
 🚫 DO NOT use past dates like 2020-2024.
-🚫 DO NOT focus on Federal Reserve, Fed rate, FOMC, or Powell unless absolutely necessary.
 ✅ Use current year: {fecha_actual.split()[-1]}.
 ✅ Use "today", "this week", "recently" for recent events.
 
@@ -1095,7 +1149,7 @@ IMAGE PROMPTS (one per segment, must match segment content):
 HASHTAGS (5-8 specific): Example "#Bitcoin #Crypto #BitcoinAnalysis #CryptoNews #MarketAnalysis"
 
 TAGS (15-20 keywords, simple, NO special chars):
-Examples: "bitcoin", "crypto", "trading", "investment", "blockchain"
+Examples: "bitcoin mining", "crypto trading", "investing basics"
 - Comma-separated ONLY
 - NO #, $, %, &, or any special chars
 - Each tag max 25 characters
@@ -1156,7 +1210,6 @@ Return JSON:
                 try:
                     result = json.loads(json_str, strict=False)
                 except json.JSONDecodeError:
-                    # Intentar limpiar comas colgantes
                     json_str_clean = re.sub(r',\s*}', '}', json_str)
                     json_str_clean = re.sub(r',\s*]', ']', json_str_clean)
                     result = json.loads(json_str_clean, strict=False)
@@ -1189,7 +1242,7 @@ Return JSON:
     sys.exit(1)
 
 # ================================================================
-# 🎬 MONTAR VIDEO
+# MONTAR VIDEO
 # ================================================================
 def montar_video_largo(recursos, fondo_path, salida="largo_capital_en.mp4", capitulos=None):
     if not recursos:
@@ -1294,7 +1347,7 @@ def montar_video_largo(recursos, fondo_path, salida="largo_capital_en.mp4", capi
     return salida
 
 # ================================================================
-# 📤 SUBIR A YOUTUBE (CON VERIFICACIÓN FINAL DE TAGS)
+# SUBIR A YOUTUBE (CON LOG DE DIAGNÓSTICO)
 # ================================================================
 def subir_a_youtube(video_path, titulo, etiquetas_str, descripcion, miniatura_path=None, dynamic_hashtags=""):
     try:
@@ -1305,43 +1358,34 @@ def subir_a_youtube(video_path, titulo, etiquetas_str, descripcion, miniatura_pa
         sys.exit(1)
     
     # Sanitizar tags
-    tags = sanitizar_tags(etiquetas_str, max_tags=20)
+    tags = sanitizar_tags(etiquetas_str, max_tags=20, max_chars=480)
     
-    # Fallback a tags curados si la lista está vacía o es muy corta
+    # Fallback a tags curados si la lista es corta
     if len(tags) < 5:
         print("⚠️ Not enough valid tags. Using curated fallback tags.")
         tags = [
-            "bitcoin", "crypto", "investing", "blockchain", "trading",
-            "finance", "gold", "cryptocurrency", "market analysis", "investment",
-            "crypto news", "bitcoin price", "altcoins", "defi", "web3",
-            "financial education", "bitcoin analysis", "crypto market", "ethereum", "solana"
+            "bitcoin", "crypto", "investing basics", "blockchain technology", "crypto trading",
+            "finance education", "gold investment", "cryptocurrency news", "market analysis",
+            "investment strategy", "crypto news", "bitcoin price", "altcoin investing", "defi",
+            "web3 technology", "financial education", "bitcoin analysis", "crypto market",
+            "ethereum network", "solana ecosystem"
         ]
+        tags = tags[:20]
     
-    # Verificación FINAL: cada tag válido individualmente
-    final_tags = []
-    for tag in tags:
-        tag = tag.strip()
-        if not tag:
-            continue
-        if len(tag) > 30:
-            tag = tag[:30]
-        if len(tag) < 2:
-            continue
-        # Verificar que solo tenga caracteres seguros
-        if re.match(r'^[a-zA-Z0-9áéíóúüñÁÉÍÓÚÜÑ\s]+$', tag):
-            final_tags.append(tag)
+    # 🔍 LOG DE DIAGNÓSTICO
+    print(f"\n📝 TAG DIAGNOSTIC — Enviando a YouTube:")
+    print(f"   Total tags: {len(tags)}")
+    total_chars = 0
+    for i, tag in enumerate(tags, 1):
+        print(f"   {i:2}. '{tag}' ({len(tag)} chars)")
+        total_chars += len(tag) + 1  # +1 por la coma
+    print(f"   Longitud total: {total_chars} chars (límite YouTube: 500)")
     
-    # Verificar longitud total
-    tags_str_final = ",".join(final_tags)
-    while len(tags_str_final) > 480 and len(final_tags) > 5:
-        final_tags = final_tags[:-1]
-        tags_str_final = ",".join(final_tags)
-    
-    if len(final_tags) < 3:
-        print("❌ Still not enough valid tags. Aborting.")
-        sys.exit(1)
-    
-    print(f"📝 Final valid tags ({len(final_tags)}): {tags_str_final[:200]}...")
+    if total_chars > 500:
+        print("⚠️ WARNING: Total length exceeds 500! Truncating...")
+        tags = tags[:15]
+        total_chars = sum(len(t) + 1 for t in tags)
+        print(f"   Truncated to {len(tags)} tags, {total_chars} chars")
     
     # Hashtags
     hashtags_fijos = "#Finance #Investing"
@@ -1358,7 +1402,7 @@ def subir_a_youtube(video_path, titulo, etiquetas_str, descripcion, miniatura_pa
         "snippet": {
             "title": titulo[:100],
             "description": descripcion_final[:5000],
-            "tags": final_tags[:20],
+            "tags": tags[:20],
             "categoryId": "22",
             "defaultLanguage": "en",
             "defaultAudioLanguage": "en",
@@ -1374,7 +1418,7 @@ def subir_a_youtube(video_path, titulo, etiquetas_str, descripcion, miniatura_pa
     request = youtube.videos().insert(part="snippet,status", body=body, media_body=media)
     response = request.execute()
     video_id = response["id"]
-    print(f"✅ Video uploaded: https://youtu.be/{video_id}")
+    print(f"\n✅ Video uploaded: https://youtu.be/{video_id}")
     
     if miniatura_path and os.path.exists(miniatura_path):
         try:
@@ -1387,7 +1431,7 @@ def subir_a_youtube(video_path, titulo, etiquetas_str, descripcion, miniatura_pa
     return video_id
 
 # ================================================================
-# 🧹 LIMPIEZA
+# LIMPIEZA
 # ================================================================
 def limpiar_archivos_temporales():
     import glob
@@ -1406,7 +1450,7 @@ def limpiar_archivos_temporales():
     print("✅ Cleanup done")
 
 # ================================================================
-# 📄 INICIALIZAR JSON
+# INICIALIZAR JSON
 # ================================================================
 def inicializar_archivos_json():
     archivos_needed = {
@@ -1424,7 +1468,7 @@ def inicializar_archivos_json():
                 json.dump(contenido, f, indent=2, ensure_ascii=False)
 
 # ================================================================
-# 🎯 MAIN
+# MAIN
 # ================================================================
 def main():
     global _used_image_urls
@@ -1433,18 +1477,24 @@ def main():
     inicializar_archivos_json()
     
     print("="*60)
-    print("🎬 Capital Minds - LONG VIDEO BOT (FIXED)")
+    print("🎬 Capital Minds - LONG VIDEO BOT (FINAL)")
+    print("   ✓ Tags con espacios internos (SEO óptimo)")
+    print("   ✓ Anti-Fed filter: 15 días sin Fed")
+    print("   ✓ Log de diagnóstico de tags")
     print("   ✓ 90% Educational/Historical, 10% News")
-    print("   ✓ NO Fed/FOMC bias (anti-repetition)")
-    print("   ✓ Aggressive tag sanitization (fixes YouTube 400)")
-    print("   ✓ 15-20 simple tags, max 25 chars each")
-    print("   ✓ Diverse topics across categories")
+    print("   ✓ Sanitización agresiva sin perder SEO")
     print("="*60)
 
     tz_mexico = ZoneInfo("America/Mexico_City")
     fecha_actual = datetime.now(tz_mexico)
     fecha_formateada = fecha_actual.strftime("%B %d, %Y")
     print(f"📅 Date: {fecha_formateada}")
+    
+    fed_reciente = verificar_fed_reciente(dias=15)
+    if fed_reciente:
+        print("🚫 Anti-Fed filter: ACTIVE (recent Fed content detected)")
+    else:
+        print("✅ Anti-Fed filter: inactive (no recent Fed content)")
     print("="*60)
     
     if not YOUTUBE_USER_TOKEN:
@@ -1599,7 +1649,7 @@ def main():
     
     limpiar_archivos_temporales()
     
-    print(f"✅ Published: https://youtu.be/{video_id}")
+    print(f"\n✅ Published: https://youtu.be/{video_id}")
     print(f"📊 Content Type: {tipo.upper()}")
 
 if __name__ == "__main__":
