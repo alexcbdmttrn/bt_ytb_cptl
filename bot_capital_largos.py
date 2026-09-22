@@ -57,7 +57,7 @@ PALABRAS_ANTI_FED = [
 _used_image_urls = set()
 
 # ================================================================
-# VOZ FIJA (sin espacios basura)
+# VOZ FIJA (Inglés)
 # ================================================================
 VOZ_FIJA = {
     "voz": "en-US-JennyNeural",
@@ -165,10 +165,6 @@ CATEGORIAS_CONTENIDO = {
 # VERIFICAR SI HAY CONTENIDO RECIENTE DE FED
 # ================================================================
 def verificar_fed_reciente(dias=15):
-    """
-    Verifica si en los últimos N días se publicó contenido con 'Fed', 'FOMC', 'Powell', etc.
-    Si sí, prohíbe generar más sobre esos temas por un tiempo.
-    """
     temas = cargar_temas_publicados()
     hoy = datetime.now(ZoneInfo("America/Mexico_City")).date()
     
@@ -184,10 +180,9 @@ def verificar_fed_reciente(dias=15):
     return False
 
 # ================================================================
-# SELECCIONAR CATEGORÍA (evita repetir temas y Fed)
+# SELECCIONAR CATEGORÍA
 # ================================================================
 def seleccionar_categoria():
-    """Selecciona categoría y tema evitando repeticiones y Fed."""
     temas_pub = cargar_temas_publicados()
     hoy = datetime.now(ZoneInfo("America/Mexico_City")).date()
     
@@ -212,7 +207,6 @@ def seleccionar_categoria():
         for categoria, datos in CATEGORIAS_CONTENIDO.items():
             peso_acumulado += datos["peso"]
             if numero_aleatorio <= peso_acumulado:
-                # Si Fed está prohibida, saltar la categoría "news"
                 if fed_prohibida and categoria == "news":
                     continue
                 
@@ -221,7 +215,6 @@ def seleccionar_categoria():
                     if t.lower() not in temas_recientes_30d
                 ]
                 
-                # Filtrar temas que mencionen Fed (por seguridad)
                 if fed_prohibida:
                     temas_disponibles = [
                         t for t in temas_disponibles
@@ -272,7 +265,7 @@ def detectar_sujeto_visual(texto_ref):
     return "a cinematic financial scene with glowing charts, coins and data"
 
 # ================================================================
-# ANÁLISIS SEMANAL DE TRENDS (SIN SESGO FED)
+# ANÁLISIS SEMANAL DE TRENDS
 # ================================================================
 def analizar_trends_semanal_largos():
     temas_pub = cargar_temas_publicados()
@@ -294,7 +287,7 @@ You are a VIRAL TREND ANALYST for YouTube LONG-FORM finance/crypto videos.
 
 CURRENT DATE: {hoy.strftime("%B %d, %Y")}
 
-🚫 CRITICAL PROHIBITION: DO NOT focus on Federal Reserve, Fed rate, FOMC, Jerome Powell, or interest rate decision news. We have already covered those topics extensively. Focus on DIVERSE educational and historical content instead.
+🚫 CRITICAL PROHIBITION: DO NOT focus on Federal Reserve, Fed rate, FOMC, Jerome Powell, or interest rate decision news. Focus on DIVERSE educational and historical content instead.
 
 RECENTLY PUBLISHED TOPICS (avoid repeating):
 {temas_text}
@@ -302,20 +295,12 @@ RECENTLY PUBLISHED TOPICS (avoid repeating):
 🎯 YOUR TASK: Generate 5 DIVERSE video topics for LONG-FORM content (7-9 min).
 
 CONTENT MIX PREFERRED:
-- 40% Educational (how-to, tutorials, explanations)
-- 35% Historical (past events, case studies, lessons)
-- 15% Analysis (cycles, patterns, data-driven)
-- 10% Major news (ONLY if truly major, NOT Fed-related)
+- 40% Educational
+- 35% Historical
+- 15% Analysis
+- 10% Major news (NOT Fed-related)
 
 DIVERSITY REQUIREMENT: Each of the 5 topics MUST be from a DIFFERENT category.
-
-For each topic provide:
-- topic: Topic name
-- category: (educational/historical/analysis/news)
-- why_trending: Data-driven reason
-- viral_score: 1-10
-- hook: First 30 seconds script
-- seo_keywords: 3-5 keywords
 
 Return JSON:
 {{
@@ -344,7 +329,7 @@ Return JSON:
     }
     
     try:
-        print("📊 Analyzing weekly trends (anti-Fed bias)...")
+        print("📊 Analyzing weekly trends...")
         r = requests.post(url, headers=headers, json=payload, timeout=90)
         r.raise_for_status()
         data = r.json()
@@ -371,7 +356,7 @@ Return JSON:
         return None
 
 # ================================================================
-# GENERAR IDEA DE VIDEO (CON FILTRO ANTI-FED)
+# GENERAR IDEA DE VIDEO
 # ================================================================
 def generar_idea_video_largo(tipo, fecha_actual, trends_data=None):
     categoria_seleccionada, tema_sugerido = seleccionar_categoria()
@@ -384,12 +369,7 @@ def generar_idea_video_largo(tipo, fecha_actual, trends_data=None):
     if fed_prohibida:
         fed_instruction = """
 🚫 CRITICAL PROHIBITION (ACTIVE):
-We have published content about Fed/FOMC/Powell in the last 15 days.
-ABSOLUTELY DO NOT create titles, topics, or hooks about:
-- Federal Reserve / Fed rate decisions / FOMC
-- Jerome Powell
-- Interest rate hikes or cuts
-- Rate decision news
+ABSOLUTELY DO NOT create titles, topics, or hooks about Federal Reserve, Fed rate decisions, FOMC, or Jerome Powell.
 Focus ONLY on educational, historical, or technical analysis content.
 """
     
@@ -411,28 +391,7 @@ SUGGESTED TOPIC: {tema_sugerido}
 🎯 HIGH-VOLUME SEO KEYWORDS TO INTEGRATE:
 {keywords_text}
 
-📚 CONTENT TYPE: {categoria_seleccionada}
-
-If EDUCATIONAL:
-- Focus on teaching and explaining clearly
-- Use simple language and analogies
-- Include practical examples
-- Step-by-step breakdown
-
-If HISTORICAL:
-- Tell a compelling story
-- Include specific events
-- Show cause and effect
-- Extract lessons learned
-
-If ANALYSIS:
-- Use data and charts
-- Show patterns and trends
-- Compare different scenarios
-
-If NEWS (only 10%):
-- Focus on IMPACT
-- Include historical context
+🚫 CRITICAL LANGUAGE RULE: YOU MUST RESPOND ENTIRELY IN ENGLISH. DO NOT USE SPANISH OR ANY OTHER LANGUAGE. THE TITLE, HOOK, AND DESCRIPTION MUST BE IN ENGLISH.
 
 🎯 YOUR TASK: Generate 5 LONG-FORM VIDEO IDEAS optimized for SEO and virality.
 
@@ -446,19 +405,12 @@ REQUIREMENTS:
 ✅ Must be suitable for 7-9 minute deep-dive
 ✅ Match the category: {categoria_seleccionada}
 
-For each idea:
-- title (with SEO keyword)
-- hook_30sec (first 30 seconds)
-- description
-- psychology_trigger (curiosity/fear/greed/education)
-- seo_score (1-10)
-
 Then SELECT THE BEST ONE and return in JSON:
 {{
     "best_idea": {{
-        "title": "Final title (60-70 chars, no Fed references)",
-        "hook_30sec": "First 30 seconds script",
-        "description": "What viewers will learn",
+        "title": "Final title (60-70 chars, no Fed references, IN ENGLISH)",
+        "hook_30sec": "First 30 seconds script (IN ENGLISH)",
+        "description": "What viewers will learn (IN ENGLISH)",
         "formula_used": "Formula name",
         "psychology_trigger": "curiosity/education",
         "type": "{categoria_seleccionada}",
@@ -510,7 +462,7 @@ Then SELECT THE BEST ONE and return in JSON:
     return None
 
 # ================================================================
-# SANITIZAR HASHTAGS Y TAGS (CORREGIDO SIN PERDER ESPACIOS INTERNOS)
+# SANITIZAR HASHTAGS Y TAGS
 # ================================================================
 def sanitizar_hashtags(hashtags_str, max_tags=8):
     if not hashtags_str:
@@ -530,15 +482,6 @@ def sanitizar_hashtags(hashtags_str, max_tags=8):
     return " ".join(cleaned)
 
 def sanitizar_tags(tags_str, max_tags=20, max_chars=480):
-    """
-    Sanitización ÓPTIMA para YouTube:
-    - MANTIENE espacios internos (bitcoin mining) → CRUCIAL para SEO
-    - Elimina espacios al inicio/final y espacios dobles
-    - Elimina caracteres especiales
-    - Limita cada tag a 30 caracteres
-    - Limita total a max_chars
-    - Máximo max_tags tags
-    """
     if not tags_str:
         return []
     
@@ -546,12 +489,9 @@ def sanitizar_tags(tags_str, max_tags=20, max_chars=480):
     
     cleaned = []
     for tag in raw_tags:
-        # Solo permitir letras, números y espacios simples
         clean = re.sub(r'[^a-zA-Z0-9áéíóúüñÁÉÍÓÚÜÑ\s]', '', tag)
-        # Normalizar espacios dobles y eliminar al inicio/final
         clean = re.sub(r'\s+', ' ', clean).strip()
         
-        # Validaciones
         if not clean or len(clean) < 2:
             continue
         if len(clean) > 30:
@@ -559,7 +499,6 @@ def sanitizar_tags(tags_str, max_tags=20, max_chars=480):
         
         cleaned.append(clean)
     
-    # Eliminar duplicados (case-insensitive)
     seen = set()
     unique = []
     for tag in cleaned:
@@ -568,14 +507,11 @@ def sanitizar_tags(tags_str, max_tags=20, max_chars=480):
             seen.add(tag_lower)
             unique.append(tag)
     
-    # Limitar cantidad
     unique = unique[:max_tags]
     
-    # Limitar longitud total
     result = []
     total_chars = 0
     for tag in unique:
-        # +1 por la coma
         if total_chars + len(tag) + 1 <= max_chars:
             result.append(tag)
             total_chars += len(tag) + 1
@@ -1076,7 +1012,7 @@ def crear_cta_final_pil(duracion=3, ancho=1280, alto=720):
         return None
 
 # ================================================================
-# GENERAR GUION LARGO
+# GENERAR GUION LARGO (CON RESTRICCIÓN DE IDIOMA)
 # ================================================================
 def generar_guion_largo(tipo, fecha_actual, idea=None):
     titulos_pub = cargar_titulos_publicados()["titulos"][-10:]
@@ -1100,12 +1036,13 @@ def generar_guion_largo(tipo, fecha_actual, idea=None):
         fed_instruction = """
 🚫 CRITICAL PROHIBITION (ACTIVE):
 DO NOT mention Federal Reserve, Fed rate, FOMC, Jerome Powell, or interest rate decisions in the script.
-We have recently published content about those topics and must maintain variety.
 Focus on educational, historical, or technical content instead.
 """
     
     prompt = f"""
 You are a PROFESSIONAL SCRIPTWRITER for YouTube LONG-FORM videos (7-9 minutes).
+
+🚫 CRITICAL LANGUAGE RULE: YOU MUST RESPOND ENTIRELY IN ENGLISH. DO NOT USE SPANISH OR ANY OTHER LANGUAGE. THE TITLE, SCRIPT, AND DESCRIPTION MUST BE IN ENGLISH.
 
 VIDEO IDEA: "{tema_elegido}"
 HOOK: "{hook_sugerido}"
@@ -1156,26 +1093,26 @@ Examples: "bitcoin mining", "crypto trading", "investing basics"
 - Max 3 words per tag
 - Max 20 tags total
 
-TITLES ALREADY PUBLISHED (DO NOT REPEAT):
+TITLES ALREADY PUBLISHED (DO NOT REPEAT - These are for reference only, your output must be in English):
 {titulos_referencia}
 
 Return JSON:
 {{
-    "title": "Title 60-70 chars with emoji (NO Fed references)",
-    "alternative_title": "Alternative",
+    "title": "Title 60-70 chars with emoji (IN ENGLISH, NO Fed references)",
+    "alternative_title": "Alternative (IN ENGLISH)",
     "keywords": ["kw1", "kw2", "kw3"],
-    "description": "Full description with chapters and hashtags",
+    "description": "Full description with chapters and hashtags (IN ENGLISH)",
     "tags": "15-20 simple tags comma separated (NO special chars)",
     "dynamic_hashtags": "#Bitcoin #Crypto #BitcoinAnalysis",
-    "script": "Full script 1300-1500 words with 7 marked blocks",
+    "script": "Full script 1300-1500 words with 7 marked blocks (IN ENGLISH)",
     "segments": [
-        {{"block": "HOOK", "text": "text (~100-150 words)", "image_prompt": "dramatic financial scene", "timestamp": "0:00"}},
-        {{"block": "INTRO", "text": "text (~200-250 words)", "image_prompt": "professional finance background", "timestamp": "0:30"}},
-        {{"block": "CHAPTER 1", "text": "text (~250-300 words)", "image_prompt": "educational visual charts", "timestamp": "1:30"}},
-        {{"block": "CHAPTER 2", "text": "text (~300-350 words)", "image_prompt": "detailed analysis visuals", "timestamp": "3:30"}},
-        {{"block": "CHAPTER 3", "text": "text (~300-350 words)", "image_prompt": "solution oriented visuals", "timestamp": "5:30"}},
-        {{"block": "CHAPTER 4", "text": "text (~250-300 words)", "image_prompt": "action steps visual", "timestamp": "7:30"}},
-        {{"block": "CLOSE", "text": "text (~150-200 words)", "image_prompt": "call to action visual", "timestamp": "8:30"}}
+        {{"block": "HOOK", "text": "text (~100-150 words, IN ENGLISH)", "image_prompt": "dramatic financial scene", "timestamp": "0:00"}},
+        {{"block": "INTRO", "text": "text (~200-250 words, IN ENGLISH)", "image_prompt": "professional finance background", "timestamp": "0:30"}},
+        {{"block": "CHAPTER 1", "text": "text (~250-300 words, IN ENGLISH)", "image_prompt": "educational visual charts", "timestamp": "1:30"}},
+        {{"block": "CHAPTER 2", "text": "text (~300-350 words, IN ENGLISH)", "image_prompt": "detailed analysis visuals", "timestamp": "3:30"}},
+        {{"block": "CHAPTER 3", "text": "text (~300-350 words, IN ENGLISH)", "image_prompt": "solution oriented visuals", "timestamp": "5:30"}},
+        {{"block": "CHAPTER 4", "text": "text (~250-300 words, IN ENGLISH)", "image_prompt": "action steps visual", "timestamp": "7:30"}},
+        {{"block": "CLOSE", "text": "text (~150-200 words, IN ENGLISH)", "image_prompt": "call to action visual", "timestamp": "8:30"}}
     ],
     "cover_words": "2-3 words for thumbnail (e.g., 'FULL GUIDE')",
     "thumbnail_prompt": "Bitcoin dramatic lighting, yellow and red on black, space for text"
@@ -1219,6 +1156,12 @@ Return JSON:
             guion_texto = result.get("script", "")
             palabras = len(re.findall(r'\w+', guion_texto))
             print(f"📊 Script words: {palabras}")
+            
+            # Validación adicional: si el script contiene palabras clave en español, rechazar
+            if re.search(r'\b(el|la|los|las|un|una|de|que|y|en|por|para|con|no|un|una|del|al)\b', guion_texto.lower()) and palabras > 100:
+                print("⚠️ Spanish detected in script. Regenerating...")
+                if intento < 2:
+                    continue
             
             if "thumbnail_prompt" not in result:
                 result["thumbnail_prompt"] = "Bitcoin dramatic lighting, yellow and red on black"
@@ -1347,7 +1290,7 @@ def montar_video_largo(recursos, fondo_path, salida="largo_capital_en.mp4", capi
     return salida
 
 # ================================================================
-# SUBIR A YOUTUBE (CON LOG DE DIAGNÓSTICO)
+# SUBIR A YOUTUBE
 # ================================================================
 def subir_a_youtube(video_path, titulo, etiquetas_str, descripcion, miniatura_path=None, dynamic_hashtags=""):
     try:
@@ -1357,10 +1300,8 @@ def subir_a_youtube(video_path, titulo, etiquetas_str, descripcion, miniatura_pa
         print(f"❌ Auth error: {e}")
         sys.exit(1)
     
-    # Sanitizar tags
     tags = sanitizar_tags(etiquetas_str, max_tags=20, max_chars=480)
     
-    # Fallback a tags curados si la lista es corta
     if len(tags) < 5:
         print("⚠️ Not enough valid tags. Using curated fallback tags.")
         tags = [
@@ -1372,13 +1313,12 @@ def subir_a_youtube(video_path, titulo, etiquetas_str, descripcion, miniatura_pa
         ]
         tags = tags[:20]
     
-    # 🔍 LOG DE DIAGNÓSTICO
     print(f"\n📝 TAG DIAGNOSTIC — Enviando a YouTube:")
     print(f"   Total tags: {len(tags)}")
     total_chars = 0
     for i, tag in enumerate(tags, 1):
         print(f"   {i:2}. '{tag}' ({len(tag)} chars)")
-        total_chars += len(tag) + 1  # +1 por la coma
+        total_chars += len(tag) + 1
     print(f"   Longitud total: {total_chars} chars (límite YouTube: 500)")
     
     if total_chars > 500:
@@ -1387,7 +1327,6 @@ def subir_a_youtube(video_path, titulo, etiquetas_str, descripcion, miniatura_pa
         total_chars = sum(len(t) + 1 for t in tags)
         print(f"   Truncated to {len(tags)} tags, {total_chars} chars")
     
-    # Hashtags
     hashtags_fijos = "#Finance #Investing"
     if dynamic_hashtags:
         dynamic_hashtags = sanitizar_hashtags(dynamic_hashtags, max_tags=6)
@@ -1482,7 +1421,7 @@ def main():
     print("   ✓ Anti-Fed filter: 15 días sin Fed")
     print("   ✓ Log de diagnóstico de tags")
     print("   ✓ 90% Educational/Historical, 10% News")
-    print("   ✓ Sanitización agresiva sin perder SEO")
+    print("   ✓ STRICT ENGLISH ONLY OUTPUT")
     print("="*60)
 
     tz_mexico = ZoneInfo("America/Mexico_City")
@@ -1514,7 +1453,6 @@ def main():
         print(f"✅ Already published today.")
         sys.exit(0)
     
-    # Trends (opcional)
     trends_data = None
     try:
         with open(TRENDS_FILE, "r", encoding="utf-8") as f:
@@ -1522,7 +1460,6 @@ def main():
     except:
         trends_data = analizar_trends_semanal_largos()
     
-    # Seleccionar tipo/categoría
     tipo, tema_sugerido = seleccionar_categoria()
     print(f"📌 Content Type: {tipo.upper()}")
     print(f"📝 Topic: {tema_sugerido}")
@@ -1530,7 +1467,6 @@ def main():
     estado = cargar_estado()
     fondo_path = seleccionar_fondo_disponible(estado)
     
-    # Generar idea
     print("💡 Generating video idea...")
     idea_data = generar_idea_video_largo(tipo, fecha_formateada, trends_data)
     if idea_data and "best_idea" in idea_data:
@@ -1558,7 +1494,6 @@ def main():
             "timestamp": seg.get("timestamp", "0:00")
         })
     
-    # Imágenes
     print("\n🖼️ Generating images...")
     imagenes_generadas = []
     for idx, seg in enumerate(segmentos):
@@ -1581,7 +1516,6 @@ def main():
             print(f"   ❌ Failed")
         time.sleep(2)
 
-    # Reusar imágenes para fallos
     print("\n🔄 SECOND PASS...")
     def obtener_imagen_disponible(idx, imagenes):
         for i in range(idx - 1, -1, -1):
@@ -1602,7 +1536,6 @@ def main():
                 imagenes_generadas[idx] = generar_fondo_solido()
                 print(f"   🖼️ Segment {idx+1}: solid background")
 
-    # Audio
     print("\n🎵 Generating audio...")
     recursos = []
     for idx, seg in enumerate(segmentos):
@@ -1630,7 +1563,6 @@ def main():
     video_path = montar_video_largo(recursos, fondo_path, "largo_capital_en.mp4", capitulos)
     print(f"🎬 Video: {video_path}")
     
-    # Miniatura
     print("🖼️ Generating thumbnail...")
     miniatura_path = crear_miniatura_profesional(
         prompt_miniatura,
