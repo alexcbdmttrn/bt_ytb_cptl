@@ -1,11 +1,13 @@
 import asyncio
 from datetime import datetime, timedelta
 import json
+import json5
 import os
 import random
 import re
 import sys
 import time
+import base64
 import requests
 import edge_tts
 from zoneinfo import ZoneInfo
@@ -34,6 +36,8 @@ YOUTUBE_USER_TOKEN = (
     else {}
 )
 NEWSAPI_KEY = os.getenv("NEWSAPI_KEY")
+CF_ACCOUNT_ID = os.getenv("CF_ACCOUNT_ID")
+CF_API_TOKEN = os.getenv("CF_API_TOKEN")
 
 CANAL_LINK = "https://www.youtube.com/@CapitalMinds"
 ESTADO_FILE = "estado_capital_largos_en.json"
@@ -668,7 +672,39 @@ def tema_ya_publicado(tema, dias=45):
     return False
 
 # ================================================================
-# GENERAR IMAGEN (PEXELS)
+# 🎨 GENERAR IMAGEN CON CLOUDFLARE AI (NUEVO)
+# ================================================================
+def generar_imagen_cloudflare(prompt, salida_path="temp_cf_image.jpg"):
+    if not CF_ACCOUNT_ID or not CF_API_TOKEN:
+        return None
+    
+    url = f"https://api.cloudflare.com/client/v4/accounts/{CF_ACCOUNT_ID}/ai/run/@cf/black-forest-labs/flux-1-schnell"
+    headers = {"Authorization": f"Bearer {CF_API_TOKEN}", "Content-Type": "application/json"}
+    payload = {
+        "prompt": prompt + ", high quality, 8k resolution, cinematic lighting, highly detailed, professional youtube thumbnail background, no text, no watermark",
+        "steps": 4
+    }
+    
+    try:
+        print("🎨 Generating background with Cloudflare AI (Flux)...")
+        r = requests.post(url, headers=headers, json=payload, timeout=60)
+        r.raise_for_status()
+        data = r.json()
+        
+        if data.get("success") and "result" in data and "image" in data["result"]:
+            with open(salida_path, "wb") as f:
+                f.write(base64.b64decode(data["result"]["image"]))
+            print("✅ Cloudflare AI image generated successfully.")
+            return salida_path
+        else:
+            print(f"⚠️ Cloudflare AI failed: {data.get('errors', 'Unknown error')}")
+            return None
+    except Exception as e:
+        print(f"⚠️ Error calling Cloudflare AI: {e}")
+        return None
+
+# ================================================================
+# GENERAR IMAGEN (PEXELS - RESPALDO)
 # ================================================================
 def generar_imagen_horizontal(prompt, tema="", bloque="", intentos=5):
     global _used_image_urls
@@ -783,31 +819,30 @@ def obtener_ruta_fuente():
     return None
 
 # ================================================================
-# MINIATURA PROFESIONAL
+# MINIATURA PROFESIONAL (CLOUDFLARE + PIL)
 # ================================================================
 def crear_miniatura_profesional(prompt_miniatura, texto_portada, salida="miniatura_largo_en.jpg"):
     try:
-        print("🖼️ Generating thumbnail...")
+        print("🖼️ Generating thumbnail background...")
+        prompt_largo = f"{prompt_miniatura}, professional documentary style, balanced contrast, neon accents, space for text on right side"
         
-        prompt_largo = (
-            f"{prompt_miniatura}, "
-            "professional documentary style, balanced contrast, "
-            "neon accents, space for text on right side"
-        )
+        # 1. Intentar con Cloudflare AI primero
+        cf_path = generar_imagen_cloudflare(prompt_largo, "temp_cf_thumb.jpg")
         
-        fondo_url = generar_imagen_horizontal(prompt_largo, tema=texto_portada, intentos=2)
-        
-        if fondo_url and fondo_url.startswith("http"):
-            try:
+        if cf_path and os.path.exists(cf_path):
+            img_path = cf_path
+            print("✅ Using Cloudflare AI generated background.")
+        else:
+            print("⚠️ Cloudflare AI failed or not configured. Falling back to Pexels.")
+            fondo_url = generar_imagen_horizontal(prompt_largo, tema=texto_portada, intentos=2)
+            if fondo_url and fondo_url.startswith("http"):
                 r = requests.get(fondo_url, timeout=30)
                 r.raise_for_status()
                 img_path = "temp_thumb_fondo_largo_en.jpg"
                 with open(img_path, "wb") as f:
                     f.write(r.content)
-            except:
+            else:
                 img_path = generar_fondo_solido(color=(10, 10, 25))
-        else:
-            img_path = generar_fondo_solido(color=(10, 10, 25))
         
         img = Image.open(img_path)
         img = ImageOps.fit(img, (1280, 720), Image.Resampling.LANCZOS)
@@ -860,6 +895,8 @@ def crear_miniatura_profesional(prompt_miniatura, texto_portada, salida="miniatu
             for dx in range(-offset, offset+1, 2):
                 for dy in range(-offset, offset+1, 2):
                     draw.text((x + dx, y + dy), linea, fill='black', font=font)
+            
+            draw.text((x, y), linea, fill='black', font=font)
         
         for i, linea in enumerate(lineas):
             bbox = draw.textbbox((0, 0), linea, font=font)
@@ -868,6 +905,10 @@ def crear_miniatura_profesional(prompt_miniatura, texto_portada, salida="miniatu
             y = y_inicio + i * alto_linea
             
             draw.text((x, y), linea, fill=(255, 215, 0), font=font)
+            draw.text((x-1, y), linea, fill=(255, 225, 80), font=font)
+            draw.text((x+1, y), linea, fill=(255, 225, 80), font=font)
+        
+        draw.rectangle([(1200, 50), (1260, 670)], outline=(255, 100, 100), width=4)
         
         img.save(salida, quality=95)
         print(f"✅ Thumbnail created: {salida}")
@@ -1012,7 +1053,7 @@ def crear_cta_final_pil(duracion=3, ancho=1280, alto=720):
         return None
 
 # ================================================================
-# GENERAR GUION LARGO (CON RESTRICCIÓN DE IDIOMA)
+# GENERAR GUION LARGO (CON JSON5 Y DETECCIÓN DE ESPAÑOL ROBUSTA)
 # ================================================================
 def generar_guion_largo(tipo, fecha_actual, idea=None):
     titulos_pub = cargar_titulos_publicados()["titulos"][-10:]
@@ -1145,11 +1186,17 @@ Return JSON:
             if inicio != -1 and fin != -1:
                 json_str = content[inicio:fin+1]
                 try:
-                    result = json.loads(json_str, strict=False)
-                except json.JSONDecodeError:
-                    json_str_clean = re.sub(r',\s*}', '}', json_str)
+                    # 🔧 LIMPIEZA ROBUSTA: Elimina saltos de línea dentro de strings y comas finales
+                    json_str_clean = re.sub(r'(?<!\\)\n', '\\n', json_str)
+                    json_str_clean = re.sub(r',\s*}', '}', json_str_clean)
                     json_str_clean = re.sub(r',\s*]', ']', json_str_clean)
                     result = json.loads(json_str_clean, strict=False)
+                except json.JSONDecodeError:
+                    # 🔧 FALLBACK A JSON5 SI ESTÁ DISPONIBLE
+                    try:
+                        result = json5.loads(json_str)
+                    except ImportError:
+                        raise ValueError("JSONDecodeError and json5 not available")
             else:
                 raise ValueError("No JSON found")
             
@@ -1157,9 +1204,13 @@ Return JSON:
             palabras = len(re.findall(r'\w+', guion_texto))
             print(f"📊 Script words: {palabras}")
             
-            # Validación adicional: si el script contiene palabras clave en español, rechazar
-            if re.search(r'\b(el|la|los|las|un|una|de|que|y|en|por|para|con|no|un|una|del|al)\b', guion_texto.lower()) and palabras > 100:
-                print("⚠️ Spanish detected in script. Regenerating...")
+            # 🔧 DETECCIÓN DE ESPAÑOL ROBUSTA (Estadística, no regex frágil)
+            spanish_words = {'el', 'la', 'los', 'las', 'un', 'una', 'de', 'que', 'y', 'en', 'por', 'para', 'con', 'no', 'del', 'al', 'es', 'son', 'muy', 'más', 'como', 'pero', 'porque', 'este', 'esta', 'esto', 'todo', 'toda', 'sus'}
+            clean_words = [w.strip('.,!?;:"\'()[]{}').lower() for w in guion_texto.split()]
+            spanish_count = sum(1 for w in clean_words if w in spanish_words)
+            
+            if palabras > 100 and (spanish_count / palabras) > 0.05: # Si más del 5% son palabras españolas comunes
+                print(f"⚠️ Spanish detected in script ({spanish_count} common words). Regenerating...")
                 if intento < 2:
                     continue
             
@@ -1378,7 +1429,7 @@ def limpiar_archivos_temporales():
         "temp_*.jpg", "temp_*.mp3", "audio_largo_en_*.mp3",
         "temp_thumb*.jpg", "miniatura_largo_en.jpg", "largo_capital_en.mp4",
         "placeholder*.jpg", "temp_*.png", "temp_capitulo_en_*.png",
-        "temp_cta_en.png", "temp_fondo_*.jpg"
+        "temp_cta_en.png", "temp_fondo_*.jpg", "temp_cf_*.jpg"
     ]
     for patron in patrones:
         for f in glob.glob(patron):
@@ -1417,11 +1468,11 @@ def main():
     
     print("="*60)
     print("🎬 Capital Minds - LONG VIDEO BOT (FINAL)")
-    print("   ✓ Tags con espacios internos (SEO óptimo)")
-    print("   ✓ Anti-Fed filter: 15 días sin Fed")
-    print("   ✓ Log de diagnóstico de tags")
+    print("   ✓ Cloudflare AI Thumbnails (Fallback to Pexels)")
+    print("   ✓ Robust JSON5 Parsing (No more delimiter errors)")
+    print("   ✓ Smart Spanish Detection (Statistical, not fragile)")
+    print("   ✓ Anti-Fed filter: 15 days")
     print("   ✓ 90% Educational/Historical, 10% News")
-    print("   ✓ STRICT ENGLISH ONLY OUTPUT")
     print("="*60)
 
     tz_mexico = ZoneInfo("America/Mexico_City")
