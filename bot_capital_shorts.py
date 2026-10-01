@@ -1,6 +1,7 @@
 import asyncio
 from datetime import datetime
 import json
+import json5
 import os
 import random
 import re
@@ -55,7 +56,7 @@ PALABRAS_ANTI_FED = [
 _used_image_urls = set()
 
 # ================================================================
-# VOZ FIJA (ESPAÑOL)
+# 🎙️ VOZ FIJA (ESPAÑOL)
 # ================================================================
 VOZ_FIJA = {
     "voz": "es-ES-ElviraNeural",
@@ -66,7 +67,7 @@ VOZ_FIJA = {
 CONFIG_VOZ_ACTUAL = VOZ_FIJA
 
 # ================================================================
-#  PALETAS Y SUJETOS VISUALES
+# 🎨 PALETAS Y SUJETOS VISUALES
 # ================================================================
 PALETAS_VIDEO = [
     "cian eléctrico y oro neón sobre azul marino oscuro",
@@ -102,7 +103,7 @@ def detectar_sujeto_visual(texto_ref):
     return "una escena financiera cinematográfica con gráficos brillantes, monedas y visualización de datos"
 
 # ================================================================
-#  VERIFICAR SI HAY CONTENIDO RECIENTE DE FED
+# 🚫 VERIFICAR SI HAY CONTENIDO RECIENTE DE FED
 # ================================================================
 def verificar_fed_reciente(dias=20):
     temas = cargar_temas_publicados()
@@ -422,7 +423,7 @@ def generar_fondo_solido(color=(20, 20, 50), ancho=1080, alto=1920):
     return path
 
 # ================================================================
-# GENERAR AUDIO (ESPAÑOL)
+# 🎙️ GENERAR AUDIO (ESPAÑOL)
 # ================================================================
 def generar_audio(texto, index, intentos_por_voz=2):
     global CONFIG_VOZ_ACTUAL
@@ -634,7 +635,7 @@ Devuelve JSON:
             
             titulo_gen = result.get("best_idea", {}).get("title", "").lower()
             if fed_prohibida and tema_contiene_fed(titulo_gen):
-                print(f"️ Tema Fed en título. Regenerando...")
+                print(f"⚠️ Tema Fed en título. Regenerando...")
                 if intento < 2:
                     continue
             
@@ -705,7 +706,7 @@ def sanitizar_tags(tags_str, max_tags=20, max_chars=480):
     return result
 
 # ================================================================
-# MÚSICA
+# 🎵 MÚSICA
 # ================================================================
 FONDOS_DISPONIBLES = [
     "The Ascent.mp3",
@@ -734,7 +735,7 @@ def seleccionar_fondo_disponible(estado):
     return seleccionada
 
 # ================================================================
-# FUNCIONES DE ESTADO
+# 📂 FUNCIONES DE ESTADO
 # ================================================================
 def cargar_estado():
     try:
@@ -801,7 +802,7 @@ def modificar_titulo_para_evitar_duplicado(titulo_original, titulos_existentes):
                      "EXCLUSIVO", "EN VIVO", "NUEVOS DATOS", "URGENTE", "ALERTA"]
     
     prefijos_unicos = ["🚨 URGENTE:", "⚠️ ALERTA:", "📈 ACTUALIZACIÓN:", "💰 ALERTA:",
-                      "🔥 CALIENTE:", " EN VIVO:", "📊 NUEVO:"]
+                      "🔥 CALIENTE:", "🔴 EN VIVO:", "📊 NUEVO:"]
     
     for _ in range(5):
         prefijo = random.choice(prefijos_unicos)
@@ -898,13 +899,13 @@ Enfócate en contenido educativo, histórico, psicología o técnico en su lugar
 Eres un GUIONISTA de YouTube Shorts y EXPERTO SEO en español sobre finanzas/crypto.
 
 📌 TEMA: "{titulo_idea}"
- CATEGORÍA: {categoria.upper()}
+📌 CATEGORÍA: {categoria.upper()}
 📌 HOOK: "{hook_sugerido}"
 📅 FECHA: {fecha_actual}
 
 {fed_instruction}
 
- REGLAS CRÍTICAS:
+REGLAS CRÍTICAS:
 
 1️⃣ PRIMEROS 3 SEGUNDOS (DEBEN DETENER EL SCROLL):
    - Declaración impactante + keyword
@@ -928,14 +929,14 @@ Eres un GUIONISTA de YouTube Shorts y EXPERTO SEO en español sobre finanzas/cry
    - SOLUCIÓN: "gráfico de tendencia ascendente, velas verdes, acentos dorados, vertical 9:16"
    - CIERRE: "fondo de finanzas profesional, sutil, vertical 9:16"
 
-5️ MINIATURA: Alto CTR, sujeto dominante, alto contraste, espacio para texto.
+5️⃣ MINIATURA: Alto CTR, sujeto dominante, alto contraste, espacio para texto.
 
-6️ HASHTAGS (6 totales):
+6️⃣ HASHTAGS (6 totales):
    - 2 ALTO volumen (#Bitcoin #Crypto)
    - 2 MEDIO (#NoticiasBitcoin #NoticiasCrypto)
    - 2 BAJO nicho (#PrecioBitcoin #AlertaCrypto)
 
-7️ TÍTULO:
+7️⃣ TÍTULO:
    - 50-60 caracteres, keyword primero
    - 1 emoji, brecha de curiosidad, power words
    - SIN referencias a Fed/FOMC/Powell
@@ -944,7 +945,7 @@ Eres un GUIONISTA de YouTube Shorts y EXPERTO SEO en español sobre finanzas/cry
 🚫 TÍTULOS YA PUBLICADOS (NO REPETIR):
 {titulos_referencia}
 
- DEVUELVE JSON:
+DEVUELVE JSON:
 {{
     "title": "Título (50-60 chars, emoji, SIN Fed, EN ESPAÑOL)",
     "alternative_title": "Título alternativo (EN ESPAÑOL)",
@@ -991,7 +992,12 @@ Eres un GUIONISTA de YouTube Shorts y EXPERTO SEO en español sobre finanzas/cry
                 json_str = respuesta[inicio:fin+1]
                 json_str = re.sub(r",\s*}", "}", json_str)
                 json_str = re.sub(r",\s*\]", "]", json_str)
-                data = json.loads(json_str, strict=False)
+                
+                # Intento de parseo robusto
+                try:
+                    data = json.loads(json_str, strict=False)
+                except json.JSONDecodeError:
+                    data = json5.loads(json_str)
             else:
                 raise ValueError("No se encontró JSON")
 
@@ -1068,7 +1074,7 @@ Eres un GUIONISTA de YouTube Shorts y EXPERTO SEO en español sobre finanzas/cry
     }, tema_elegido, categoria
 
 # ================================================================
-# GENERAR RECURSOS POR SEGMENTO
+# 🎬 GENERAR RECURSOS POR SEGMENTO
 # ================================================================
 def generar_recursos_por_segmento(segmentos_data, paleta_video, titulo, tema="", intentos_imagen=10):
     recursos = []
@@ -1119,7 +1125,7 @@ def generar_recursos_por_segmento(segmentos_data, paleta_video, titulo, tema="",
     return recursos
 
 # ================================================================
-# SUBTÍTULOS
+# 📝 SUBTÍTULOS
 # ================================================================
 def agregar_subtitulos_con_pil(imagen_path, texto, salida_path):
     try:
@@ -1177,7 +1183,7 @@ def agregar_subtitulos_con_pil(imagen_path, texto, salida_path):
         img.save(salida_path)
         return salida_path
     except Exception as e:
-        print(f"️ Error en subtítulos: {e}")
+        print(f"⚠️ Error en subtítulos: {e}")
         return imagen_path
 
 def obtener_ruta_fuente():
@@ -1203,7 +1209,7 @@ def obtener_ruta_fuente():
 # ================================================================
 def crear_miniatura_profesional(prompt_miniatura, texto_portada, salida="miniatura_short_es.jpg"):
     try:
-        print("️ Generando miniatura de SHORT ultra-llamativa...")
+        print("🖼️ Generando miniatura de SHORT ultra-llamativa...")
         
         prompt_super = f"""
 {prompt_miniatura}, 
@@ -1324,7 +1330,7 @@ sin texto en imagen, sin watermark
         return None
 
 # ================================================================
-# MONTAR VIDEO
+# 🎬 MONTAR VIDEO
 # ================================================================
 def montar_video_shorts(recursos, fondo_path, salida="short_capital_es.mp4"):
     if not recursos:
@@ -1421,14 +1427,14 @@ def montar_video_shorts(recursos, fondo_path, salida="short_capital_es.mp4"):
     return salida
 
 # ================================================================
-# SUBIR A YOUTUBE
+# 📤 SUBIR A YOUTUBE
 # ================================================================
 def subir_a_youtube(video_path, titulo, etiquetas_str, gancho, contexto, hashtags, fuente="", miniatura_path=None, dynamic_hashtags="", seo_description=""):
     try:
         creds = Credentials.from_authorized_user_info(YOUTUBE_USER_TOKEN)
         youtube = build("youtube", "v3", credentials=creds)
     except Exception as e:
-        print(f" Error autenticación: {e}")
+        print(f"❌ Error autenticación: {e}")
         sys.exit(1)
     
     tags = sanitizar_tags(etiquetas_str, max_tags=20, max_chars=480)
@@ -1499,7 +1505,7 @@ def subir_a_youtube(video_path, titulo, etiquetas_str, gancho, contexto, hashtag
     return video_id
 
 # ================================================================
-# LIMPIEZA
+# 🧹 LIMPIEZA
 # ================================================================
 def limpiar_archivos_temporales():
     import glob
@@ -1530,7 +1536,7 @@ def inicializar_archivos_json():
                 json.dump(contenido, f, indent=2, ensure_ascii=False)
 
 # ================================================================
-# MAIN
+# 🎯 MAIN
 # ================================================================
 def main():
     global _used_image_urls
@@ -1539,7 +1545,7 @@ def main():
     inicializar_archivos_json()
     
     print("="*60)
-    print(" Capital Minds - BOT SHORTS (ESPAÑOL)")
+    print("🎬 Capital Minds - BOT SHORTS (ESPAÑOL)")
     print("   ✓ 35% Educativo, 25% Histórico, 20% Psicología")
     print("   ✓ 15% Análisis, 5% Noticias (SIN sesgo Fed)")
     print("   ✓ Filtro Anti-Fed (20 días sin Fed)")
@@ -1554,7 +1560,7 @@ def main():
     tz_mexico = ZoneInfo("America/Mexico_City")
     fecha_actual = datetime.now(tz_mexico)
     fecha_formateada = fecha_actual.strftime("%B %d, %Y")
-    print(f" Fecha: {fecha_formateada}")
+    print(f"📅 Fecha: {fecha_formateada}")
     
     fed_reciente = verificar_fed_reciente(dias=20)
     if fed_reciente:
@@ -1584,13 +1590,13 @@ def main():
     
     categoria, tema_sugerido = seleccionar_categoria_shorts()
     print(f"📌 Categoría: {categoria.upper()}")
-    print(f" Tema sugerido: {tema_sugerido}")
+    print(f"📝 Tema sugerido: {tema_sugerido}")
     
     estado = cargar_estado()
     fondo_path = seleccionar_fondo_disponible(estado)
     
     paleta_video = random.choice(PALETAS_VIDEO)
-    print(f" Paleta: {paleta_video[:50]}...")
+    print(f"🎨 Paleta: {paleta_video[:50]}...")
     
     trends_data = None
     try:
@@ -1664,7 +1670,7 @@ if __name__ == "__main__":
     try:
         main()
     except Exception as e:
-        print(f" Error fatal: {e}")
+        print(f"❌ Error fatal: {e}")
         import traceback
         traceback.print_exc()
         sys.exit(1)
