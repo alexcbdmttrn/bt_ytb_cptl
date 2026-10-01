@@ -1074,106 +1074,137 @@ Luego SELECCIONA LA MEJOR y devuelve en JSON:
 # ================================================================
 def generar_guion_largo(tipo, fecha_actual, idea=None):
     titulos_pub = cargar_titulos_publicados()["titulos"][-10:]
-    titulos_referencia = "\n".join([f"- {t}" for t in titulos_pub]) if titulos_pub else "Ninguno aún."
+    titulos_referencia = "\n".join([f"- {t}" for t in titulos_pub]) if titulos_pub else "None yet."
 
     if not idea:
-        print("💡 Generando idea...")
+        print("💡 Generating idea with viral formulas...")
         idea_data = generar_idea_video_largo(tipo, fecha_actual)
         if idea_data and "best_idea" in idea_data:
             idea = idea_data["best_idea"]
-            print(f"   ✅ Idea: {idea['title']}")
+            print(f"   ✅ Selected idea: {idea['title']}")
+            print(f"   📌 Format: {idea.get('formula_used', 'general')}")
         else:
-            idea = {"title": "Guía de Inversión en Bitcoin", "hook_30sec": "Bitcoin está cambiando todo...", "description": "Guía completa", "type": tipo}
+            print("⚠️ No idea generated, using fallback topic.")
+            idea = {"title": "Bitcoin Market Analysis", "hook_30sec": "Bitcoin just did something unprecedented...", "description": "Full market breakdown", "type": "analysis"}
 
     tema_elegido = idea["title"]
     hook_sugerido = idea.get("hook_30sec", "")
     
-    fed_prohibida = verificar_fed_reciente(dias=15)
-    fed_instruction = ""
-    if fed_prohibida:
-        fed_instruction = """
-🚫 PROHIBICIÓN CRÍTICA (ACTIVA):
-NO menciones Federal Reserve, Fed rate, FOMC, Jerome Powell, o decisiones de tasas de interés en el guion.
-Enfócate en contenido educativo, histórico o técnico.
-"""
-    
     prompt = f"""
-Eres un GUIONISTA PROFESIONAL para videos de YouTube en ESPAÑOL (7-9 minutos).
+You are a PROFESSIONAL SCRIPTWRITER and FINANCE EXPERT for YouTube LONG-FORM videos (7-9 minutes).
 
-🚫 REGLA CRÍTICA DE IDIOMA: DEBES RESPONDER COMPLETAMENTE EN ESPAÑOL. NO USES INGLÉS NI OTRO IDIOMA. EL TÍTULO, GUION Y DESCRIPCIÓN DEBEN ESTAR EN ESPAÑOL.
+VIDEO IDEA: "{tema_elegido}"
+HOOK (first 30s): "{hook_sugerido}"
+CONTENT TYPE: {tipo.upper()}
+CURRENT DATE: {fecha_actual}
 
-IDEA DE VIDEO: "{tema_elegido}"
-HOOK: "{hook_sugerido}"
-TIPO: {tipo.upper()}
-FECHA ACTUAL: {fecha_actual}
+DATE RULE (CRITICAL):
+- DO NOT use past dates like 2020, 2021, 2022, 2023 or 2024.
+- Use current year: {fecha_actual.split()[-1]}.
+- Say "today", "this week", or "recently" for recent events.
 
-{fed_instruction}
+GOLDEN RULE (CRITICAL FOR RETENTION):
+- Script MUST be 1300-1500 words (7-9 minutes at normal pace).
+- First 30 seconds MUST hook viewers (use pattern interrupt).
+- Include MINI-HOOKS every 2 minutes to maintain retention.
+- Each section must deliver value and create curiosity for next section.
 
-REGLA DE FECHA:
-🚫 NO uses fechas pasadas como 2020-2024.
-✅ Usa año actual: {fecha_actual.split()[-1]}.
-✅ Usa "hoy", "esta semana", "recientemente" para eventos recientes.
+MANDATORY STRUCTURE (Challenge to Process to Result):
+[HOOK - 0:00] Pattern interrupt plus promise (100-150 words)
+   - Start with shocking statement, question, or pattern interrupt
+   - Promise specific value viewers will get
+   - Create curiosity gap
+[INTRO - 0:30] Context and why it matters (200-250 words)
+   - Explain the topic and why viewers should care
+   - Establish credibility
+   - Preview what is coming (chapters)
+[CHAPTER 1 - 1:30] Foundation or Background (250-300 words)
+   - Set the stage with context
+   - Key concepts explained
+   - First mini-hook at end
+[CHAPTER 2 - 3:30] Deep Dive or Analysis (300-350 words)
+   - Main content with data or examples
+   - Step-by-step breakdown
+   - Second mini-hook at end
+[CHAPTER 3 - 5:30] Advanced Insights or Solution (300-350 words)
+   - Advanced strategies or solution
+   - Real examples and proof
+   - Third mini-hook at end
+[CHAPTER 4 - 7:30] What is Next or Action Steps (250-300 words)
+   - Practical application
+   - What viewers should do
+   - Final insights
+[CLOSE - 8:30] Summary and CTA (150-200 words)
+   - Recap key points
+   - Strong CTA (subscribe, comment, like)
+   - Tease next video
 
-ESTRUCTURA DEL GUION (7 bloques, 1300-1500 palabras total):
-[HOOK - 0:00] Interrupción de patrón + promesa (100-150 palabras)
-[INTRO - 0:30] Contexto y por qué importa (200-250 palabras)
-[CAPÍTULO 1 - 1:30] Fundamentos/Background (250-300 palabras)
-[CAPÍTULO 2 - 3:30] Análisis Profundo (300-350 palabras)
-[CAPÍTULO 3 - 5:30] Insights Avanzados/Solución (300-350 palabras)
-[CAPÍTULO 4 - 7:30] Pasos de Acción (250-300 palabras)
-[CIERRE - 8:30] Resumen + CTA (150-200 palabras)
+RETENTION TACTICS (USE THROUGHOUT):
+- "But here is where it gets interesting..."
+- "Now, this is where most people make a mistake..."
+- "I will show you exactly how to..."
+- "The data shows something surprising..."
+- "Here is what nobody is talking about..."
 
-TÁCTICAS DE RETENCIÓN:
-- "Pero aquí es donde se pone interesante..."
-- "Ahora, aquí es donde la mayoría comete un error..."
-- "Te mostraré exactamente cómo..."
-- "Los datos muestran algo sorprendente..."
-- "Esto es de lo que nadie está hablando..."
+NUMBERS RULE:
+- Write numbers with LETTERS: "four hundred", not "400"
+- For ranges: "between X and Y"
 
-NÚMEROS: Escribe con LETRAS: "cuatrocientos" no "400"
+TONE:
+- Conversational, like talking to a friend
+- Use rhetorical questions
+- Include analogies and comparisons
+- Vary sentence length for rhythm
 
-PROMPTS DE IMAGEN (uno por segmento, debe coincidir con el contenido):
-- HOOK: "escena financiera dramática, luces neón urgentes, alto contraste, cinematográfico 8k"
-- INTRO: "fondo profesional finanzas, gráficos y datos, neón azul y oro"
-- CAPÍTULO 1: "visual educativo, gráficos limpios, gráficos explicativos, cian y oro"
-- CAPÍTULO 2: "visuales de análisis detallado, gráficos de datos, profesional, esmeralda y plata"
-- CAPÍTULO 3: "visuales orientados a solución, tendencias ascendentes, éxito, acentos dorados"
-- CAPÍTULO 4: "visual de pasos de acción, gráficos claros, profesional, verde azulado y ámbar"
-- CIERRE: "visual de llamada a la acción, atractivo, dinámico, violeta y naranja"
+IMAGE PROMPTS (One per segment - BE SPECIFIC):
+   Each prompt MUST match the segment content:
+   - HOOK: "dramatic financial scene, urgent neon lights, high contrast, cinematic 8k"
+   - INTRO: "professional finance background, charts and data, blue and gold neon"
+   - CHAPTER 1: "educational visual, clean charts, explanatory graphics, cyan and gold"
+   - CHAPTER 2: "detailed analysis visuals, data charts, professional, emerald and silver"
+   - CHAPTER 3: "solution-oriented visuals, upward trends, success, gold accents"
+   - CHAPTER 4: "action steps visual, clear graphics, professional, teal and amber"
+   - CLOSE: "call-to-action visual, engaging, dynamic, violet and orange"
 
-HASHTAGS (5-8 específicos): Ejemplo "#Bitcoin #Crypto #AnalisisBitcoin #NoticiasCrypto #AnalisisMercado"
+HASHTAGS (5-8 specific to topic):
+   Example: "#Bitcoin #Crypto #BitcoinAnalysis #CryptoNews #MarketAnalysis"
 
-TAGS (20-25 keywords, simples, SIN caracteres especiales):
-Ejemplos: "minería bitcoin", "trading crypto", "conceptos básicos inversión"
-- Separados por coma SOLAMENTE
-- SIN #, $, %, &, o cualquier caracter especial
-- Cada tag máximo 30 caracteres
-- Máximo 4 palabras por tag
-- Máximo 25 tags total
+THUMBNAIL PROMPT:
+   - One dominant subject
+   - High contrast (yellow/red on black)
+   - Space for 3-5 words of text
+   - Example: "Bitcoin with dramatic lighting, yellow and red accents, black background, space for text"
 
-TÍTULOS YA PUBLICADOS (NO REPETIR - Solo para referencia, tu output debe estar en ESPAÑOL):
+TAGS (25-30 keywords):
+   - Comma-separated ONLY
+   - NO special characters (#, $, %, &)
+   - Simple keywords: "bitcoin", "crypto", "trading"
+   - Maximum 500 characters total
+
+TITLES ALREADY PUBLISHED (DO NOT REPEAT):
 {titulos_referencia}
 
-Devuelve JSON:
+RESPONSE IN JSON FORMAT:
 {{
-    "title": "Título 60-70 chars con emoji (EN ESPAÑOL, SIN Fed)",
-    "alternative_title": "Alternativa (EN ESPAÑOL)",
-    "keywords": ["kw1", "kw2", "kw3"],
-    "description": "Descripción completa con capítulos y hashtags (EN ESPAÑOL)",
-    "tags": "20-25 tags simples separados por coma (SIN caracteres especiales)",
-    "dynamic_hashtags": "#Bitcoin #Crypto #AnalisisBitcoin",
-    "script": "Guion completo 1300-1500 palabras con 7 bloques marcados (EN ESPAÑOL)",
+    "title": "Optimized title (60-70 chars with emoji)",
+    "alternative_title": "Alternative for A/B testing",
+    "keywords": ["kw1", "kw2", "kw3", "kw4", "kw5"],
+    "description": "Full description with chapters and hashtags",
+    "tags": "25-30 tags comma separated (NO #, NO special chars)",
+    "dynamic_hashtags": "#Bitcoin #Crypto #BitcoinAnalysis #MarketAnalysis",
+    "script": "Full script 1300-1500 words with 7 marked blocks: [HOOK], [INTRO], [CHAPTER 1], [CHAPTER 2], [CHAPTER 3], [CHAPTER 4], [CLOSE]",
     "segments": [
-        {{"block": "HOOK", "text": "texto (~100-150 palabras, EN ESPAÑOL)", "image_prompt": "escena financiera dramática", "timestamp": "0:00"}},
-        {{"block": "INTRO", "text": "texto (~200-250 palabras, EN ESPAÑOL)", "image_prompt": "fondo profesional finanzas", "timestamp": "0:30"}},
-        {{"block": "CAPÍTULO 1", "text": "texto (~250-300 palabras, EN ESPAÑOL)", "image_prompt": "visual educativo gráficos", "timestamp": "1:30"}},
-        {{"block": "CAPÍTULO 2", "text": "texto (~300-350 palabras, EN ESPAÑOL)", "image_prompt": "visuales análisis detallado", "timestamp": "3:30"}},
-        {{"block": "CAPÍTULO 3", "text": "texto (~300-350 palabras, EN ESPAÑOL)", "image_prompt": "visuales orientados solución", "timestamp": "5:30"}},
-        {{"block": "CAPÍTULO 4", "text": "texto (~250-300 palabras, EN ESPAÑOL)", "image_prompt": "visual pasos de acción", "timestamp": "7:30"}},
-        {{"block": "CIERRE", "text": "texto (~150-200 palabras, EN ESPAÑOL)", "image_prompt": "visual llamada a la acción", "timestamp": "8:30"}}
+        {{"block": "HOOK", "text": "text (~100-150 words)", "image_prompt": "dramatic financial scene, urgent neon lights, high contrast, cinematic 8k", "timestamp": "0:00"}},
+        {{"block": "INTRO", "text": "text (~200-250 words)", "image_prompt": "professional finance background, charts and data, blue and gold neon", "timestamp": "0:30"}},
+        {{"block": "CHAPTER 1", "text": "text (~250-300 words)", "image_prompt": "educational visual, clean charts, explanatory graphics, cyan and gold", "timestamp": "1:30"}},
+        {{"block": "CHAPTER 2", "text": "text (~300-350 words)", "image_prompt": "detailed analysis visuals, data charts, professional, emerald and silver", "timestamp": "3:30"}},
+        {{"block": "CHAPTER 3", "text": "text (~300-350 words)", "image_prompt": "solution-oriented visuals, upward trends, success, gold accents", "timestamp": "5:30"}},
+        {{"block": "CHAPTER 4", "text": "text (~250-300 words)", "image_prompt": "action steps visual, clear graphics, professional, teal and amber", "timestamp": "7:30"}},
+        {{"block": "CLOSE", "text": "text (~150-200 words)", "image_prompt": "call-to-action visual, engaging, dynamic, violet and orange", "timestamp": "8:30"}}
     ],
-    "cover_words": "2-3 palabras para miniatura (ej: 'GUÍA COMPLETA')",
-    "thumbnail_prompt": "Bitcoin iluminación dramática, amarillo y rojo sobre negro, espacio para texto"
+    "cover_words": "2-3 words for thumbnail (e.g., 'FULL ANALYSIS')",
+    "thumbnail_prompt": "Bitcoin dramatic lighting, yellow and red on black, space for text, YouTube thumbnail style, 16:9",
+    "seo_optimized_description": "Full description (300 chars) with keywords naturally integrated for YouTube SEO"
 }}
 """
     url = "https://api.deepseek.com/v1/chat/completions"
@@ -1182,14 +1213,14 @@ Devuelve JSON:
         "model": "deepseek-chat",
         "messages": [{"role": "user", "content": prompt}],
         "temperature": 0.8,
-        "max_tokens": 4000,
+        "max_tokens": 8192,  # 🔧 AUMENTADO: 4000 era muy poco para 1500 palabras + JSON
         "response_format": {"type": "json_object"}
     }
     
     for intento in range(3):
         try:
-            print(f"🔄 Generando guion (intento {intento+1}/3)...")
-            r = requests.post(url, headers=headers, json=payload, timeout=150)
+            print(f"🔄 Generating script (attempt {intento+1}/3)...")
+            r = requests.post(url, headers=headers, json=payload, timeout=180) # 🔧 AUMENTADO TIMEOUT
             r.raise_for_status()
             data = r.json()
             content = data["choices"][0]["message"]["content"]
@@ -1200,44 +1231,62 @@ Devuelve JSON:
             
             inicio = content.find("{")
             fin = content.rfind("}")
+            
             if inicio != -1 and fin != -1:
                 json_str = content[inicio:fin+1]
+                
+                # 🔧 REPARACIÓN DE JSON TRUNCADO:
+                # Si la IA se quedó sin tokens, a veces cierra mal las llaves.
+                # Intentamos equilibrar llaves y corchetes antes de parsear.
+                open_braces = json_str.count('{')
+                close_braces = json_str.count('}')
+                if open_braces > close_braces:
+                    json_str += '}' * (open_braces - close_braces)
+                
+                open_brackets = json_str.count('[')
+                close_brackets = json_str.count(']')
+                if open_brackets > close_brackets:
+                    json_str += ']' * (open_brackets - close_brackets)
+                
                 try:
-                    json_str_clean = re.sub(r'(?<!\\)\n', '\\n', json_str)
-                    json_str_clean = re.sub(r',\s*}', '}', json_str_clean)
-                    json_str_clean = re.sub(r',\s*]', ']', json_str_clean)
-                    result = json.loads(json_str_clean, strict=False)
+                    result = json.loads(json_str)
                 except json.JSONDecodeError:
-                    try:
-                        result = json5.loads(json_str)
-                    except ImportError:
-                        raise ValueError("JSONDecodeError y json5 no disponible")
+                    # Si aún falla, intentamos con json5 si está disponible, o lanzamos error
+                    import json5
+                    result = json5.loads(json_str)
             else:
-                raise ValueError("No se encontró JSON")
+                raise ValueError("No JSON found in response")
             
             guion_texto = result.get("script", "")
             palabras = len(re.findall(r'\w+', guion_texto))
-            print(f"📊 Palabras del guion: {palabras}")
+            print(f"📊 Script words: {palabras}")
+            
+            if palabras < 1100:
+                print(f"⚠️ Script too short ({palabras} words). Adjusting voice speed...")
+                global VOZ_FIJA, CONFIG_VOZ_ACTUAL
+                VOZ_FIJA = {"voz": "en-US-JennyNeural", "velocidad": "+5%", "tono": "-1Hz"}
+                CONFIG_VOZ_ACTUAL = VOZ_FIJA
             
             if "thumbnail_prompt" not in result:
-                result["thumbnail_prompt"] = "Bitcoin iluminación dramática, amarillo y rojo sobre negro"
+                result["thumbnail_prompt"] = "Bitcoin dramatic lighting, yellow and red on black, space for text"
             
             if "dynamic_hashtags" not in result:
                 result["dynamic_hashtags"] = ""
             
             for seg in result.get("segments", []):
                 if not seg.get("image_prompt") or len(seg["image_prompt"].split()) < 5:
-                    seg["image_prompt"] = f"escena financiera cinematográfica, iluminación neón, hiperrealista, 8k"
+                    seg["image_prompt"] = f"cinematic financial scene about {tema_elegido[:50]}, neon lighting, hyperrealistic, 8k, no people, no text"
                 if "timestamp" not in seg:
                     seg["timestamp"] = "0:00"
             
-            return result, tema_elegido, idea.get("description", "Análisis financiero")
+            return result, tema_elegido, idea.get("description", "Financial analysis")
+            
         except Exception as e:
-            print(f" Intento {intento+1}/3 falló: {e}")
+            print(f"❌ Attempt {intento+1}/3 failed: {e}")
             if intento < 2:
                 time.sleep(10)
     
-    print("❌ Error generando guion")
+    print("❌ Error generating script after 3 attempts")
     sys.exit(1)
 
 # ================================================================
