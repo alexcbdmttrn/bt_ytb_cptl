@@ -38,19 +38,21 @@ jobs:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
           YOUTUBE_USER_TOKEN_CAPITAL: ${{ secrets.YOUTUBE_USER_TOKEN_CAPITAL }}
+          # ✅ AGREGADOS: Credenciales de Cloudflare
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
         run: python bot_capital_shorts.py
 
       - name: 🔥 Limpiar archivos temporales antes del commit
         run: |
-          rm -f *.mp3 *.mp4 *.jpg temp_* placeholder_* short_capital_en.mp4 miniatura_short_en.jpg 2>/dev/null || true
+          rm -f *.mp3 *.mp4 *.jpg temp_* placeholder_* short_capital_es.mp4 miniatura_short_es.jpg 2>/dev/null || true
           echo "🧹 Archivos temporales eliminados"
 
       - name: 📦 Commit y push automático de los estados
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "Actualizar estado Capital Digital shorts [skip ci]"
-          file_pattern: "estado_capital_shorts.json titulos_capital_shorts_publicados.json temas_shorts_publicados.json estado_capital_shorts_en.json titulos_capital_shorts_en_publicados.json temas_shorts_en_publicados.json"
+          file_pattern: "estado_capital_shorts_es.json titulos_capital_shorts_es_publicados.json temas_shorts_es_publicados.json trends_semanal_es.json"
           commit_user_name: "github-actions[bot]"
           commit_user_email: "github-actions[bot]@users.noreply.github.com"
           commit_author: "github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
-          push_options: "--force"
