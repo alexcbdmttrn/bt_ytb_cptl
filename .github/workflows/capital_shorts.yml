@@ -1,9 +1,8 @@
-name: Bot YouTube - Shorts Capital Digital (2 al día)
+name: Bot YouTube - Video Largo Capital Digital (1 cada 2 días)
 
 on:
   schedule:
-    - cron: '12 13 * * *'   # 8:12 AM CDMX (13:12 UTC) - Video 1
-    - cron: '41 21 * * *'   # 4:41 PM CDMX (21:41 UTC) - Video 2
+    - cron: '23 21 */2 * *'   # Cada 2 días a las 3:23 PM CDMX (21:23 UTC)
   workflow_dispatch:
 
 permissions:
@@ -30,29 +29,28 @@ jobs:
           pip install edge-tts
           pip install json5
           pip install pytz
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg fonts-dejavu-core
+          pip install numpy
+          sudo apt-get update --fix-missing
+          sudo apt-get install -y --no-install-recommends ffmpeg fonts-dejavu-core
 
-      - name: Ejecutar bot de Shorts (Capital Digital)
+      - name: Ejecutar bot de Largos
         env:
           DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
           YOUTUBE_USER_TOKEN_CAPITAL: ${{ secrets.YOUTUBE_USER_TOKEN_CAPITAL }}
-          # ✅ AGREGADOS: Credenciales de Cloudflare
           CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
           CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
-        run: python bot_capital_shorts.py
+        run: python bot_capital_largos.py
 
-      - name: 🔥 Limpiar archivos temporales antes del commit
+      - name: Limpiar archivos temporales
         run: |
-          rm -f *.mp3 *.mp4 *.jpg temp_* placeholder_* short_capital_es.mp4 miniatura_short_es.jpg 2>/dev/null || true
+          rm -f *.mp3 *.mp4 *.jpg temp_* placeholder_* largo_capital_es.mp4 miniatura_largo_es.jpg temp_cf_*.jpg 2>/dev/null || true
           echo "🧹 Archivos temporales eliminados"
 
-      - name: 📦 Commit y push automático de los estados
+      - name: Commit y push del estado
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "Actualizar estado Capital Digital shorts [skip ci]"
-          file_pattern: "estado_capital_shorts_es.json titulos_capital_shorts_es_publicados.json temas_shorts_es_publicados.json trends_semanal_es.json"
+          commit_message: "Actualizar estado Capital Digital largos [skip ci]"
+          file_pattern: "estado_capital_largos_es.json titulos_capital_largos_es_publicados.json temas_largos_es_publicados.json trends_semanal_largos_es.json"
           commit_user_name: "github-actions[bot]"
-          commit_user_email: "github-actions[bot]@users.noreply.github.com"
-          commit_author: "github-actions[bot] <github-actions[bot]@users.noreply.github.com>"
+          commit_user_email: "41898282+github-actions[bot]@users.noreply.github.com"
