@@ -267,6 +267,9 @@ def generar_imagen_cloudflare(prompt, salida_path="temp_cf_image.jpg"):
     
     try:
         r = requests.post(url, headers=headers, json=payload, timeout=60)
+        if r.status_code == 429:
+            print("⚠️ Cloudflare API rate limit (429). Usando Pexels como respaldo.")
+            return None
         r.raise_for_status()
         data = r.json()
         
@@ -343,7 +346,7 @@ def generar_imagen_vertical(prompt, tema="", bloque="", intentos=10):
                         _used_image_urls.add(img_url)
                         return img_url
         except Exception as e:
-            print(f"      ⚠️ Error: {e}")
+            print(f"      ️ Error: {e}")
         
         if intento < intentos - 1:
             time.sleep(10)
@@ -522,7 +525,10 @@ Devuelve JSON:
         inicio = content.find("{")
         fin = content.rfind("}")
         json_str = content[inicio:fin+1]
-        trends = json.loads(json_str)
+        try:
+            trends = json.loads(json_str)
+        except json.JSONDecodeError:
+            trends = json5.loads(json_str)
         
         with open(TRENDS_FILE, "w", encoding="utf-8") as f:
             json.dump(trends, f, indent=2, ensure_ascii=False)
@@ -631,7 +637,10 @@ Devuelve JSON:
             inicio = content.find("{")
             fin = content.rfind("}")
             json_str = content[inicio:fin+1]
-            result = json.loads(json_str)
+            try:
+                result = json.loads(json_str)
+            except json.JSONDecodeError:
+                result = json5.loads(json_str)
             
             titulo_gen = result.get("best_idea", {}).get("title", "").lower()
             if fed_prohibida and tema_contiene_fed(titulo_gen):
@@ -801,8 +810,8 @@ def modificar_titulo_para_evitar_duplicado(titulo_original, titulos_existentes):
     sufijos_unicos = ["AHORA", "HOY", "2026", "JUSTO AHORA", "ACTUALIZACIÓN",
                      "EXCLUSIVO", "EN VIVO", "NUEVOS DATOS", "URGENTE", "ALERTA"]
     
-    prefijos_unicos = ["🚨 URGENTE:", "⚠️ ALERTA:", "📈 ACTUALIZACIÓN:", "💰 ALERTA:",
-                      "🔥 CALIENTE:", "🔴 EN VIVO:", "📊 NUEVO:"]
+    prefijos_unicos = [" URGENTE:", "⚠️ ALERTA:", "📈 ACTUALIZACIÓN:", "💰 ALERTA:",
+                      "🔥 CALIENTE:", "🔴 EN VIVO:", " NUEVO:"]
     
     for _ in range(5):
         prefijo = random.choice(prefijos_unicos)
@@ -890,7 +899,7 @@ def generar_guion_financiero(categoria, tema_elegido, fecha_actual, idea=None):
     fed_instruction = ""
     if fed_prohibida:
         fed_instruction = """
-🚫 PROHIBICIÓN CRÍTICA (ACTIVA):
+ PROHIBICIÓN CRÍTICA (ACTIVA):
 Hemos publicado recientemente contenido sobre Fed. NO menciones Federal Reserve, tasa Fed, FOMC, Powell, o decisiones de tasas de interés en el guion o título.
 Enfócate en contenido educativo, histórico, psicología o técnico en su lugar.
 """
@@ -901,7 +910,7 @@ Eres un GUIONISTA de YouTube Shorts y EXPERTO SEO en español sobre finanzas/cry
 📌 TEMA: "{titulo_idea}"
 📌 CATEGORÍA: {categoria.upper()}
 📌 HOOK: "{hook_sugerido}"
-📅 FECHA: {fecha_actual}
+ FECHA: {fecha_actual}
 
 {fed_instruction}
 
@@ -911,14 +920,14 @@ REGLAS CRÍTICAS:
    - Declaración impactante + keyword
    - Ejemplos: "Bitcoin acaba de hacer ESTO...", "Por qué 90% de traders..."
 
-2️⃣ ESTRUCTURA (90-110 palabras para 40-50 segundos):
+2️ ESTRUCTURA (90-110 palabras para 40-50 segundos):
    [HOOK 0-3s] Declaración impactante (10 palabras)
    [PROBLEMA 3-10s] Por qué importa (25 palabras)
    [DATOS 10-25s] Hechos/números con keyword (35 palabras)
    [SOLUCIÓN 25-35s] Qué hacer (25 palabras)
    [CIERRE 35-40s] CTA (5 palabras)
 
-3️⃣ SEO:
+3️ SEO:
    - Menciona la KEYWORD PRIMARIA 2-3 veces naturalmente
    - Incluye NÚMEROS (aumenta engagement 40%)
 
@@ -1040,7 +1049,7 @@ DEVUELVE JSON:
             if "dynamic_hashtags" not in data:
                 data["dynamic_hashtags"] = "#Bitcoin #Crypto #NoticiasBitcoin #NoticiasCrypto #PrecioBitcoin #AlertaCrypto"
 
-            print(f"   🏷️ Título: {data['title']}")
+            print(f"   ️ Título: {data['title']}")
             return data, tema_elegido, categoria
             
         except Exception as e:
@@ -1048,7 +1057,7 @@ DEVUELVE JSON:
             if intento < 5:
                 time.sleep(10)
 
-    print("⚠️ Todos los intentos fallaron. Generando título forzado único...")
+    print("️ Todos los intentos fallaron. Generando título forzado único...")
     fecha_corta = datetime.now().strftime("%b %d").upper()
     titulo_forzado = f"📊 {tema_elegido[:40]} - {fecha_corta}"
     
@@ -1197,7 +1206,7 @@ def obtener_ruta_fuente():
                     f.write(r.content)
                 print("✅ Fuente Anton descargada")
         except Exception as e:
-            print(f"⚠️ Error descargando fuente: {e}")
+            print(f"️ Error descargando fuente: {e}")
     rutas = ["Anton.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"]
     for ruta in rutas:
         if os.path.exists(ruta):
@@ -1440,11 +1449,11 @@ def subir_a_youtube(video_path, titulo, etiquetas_str, gancho, contexto, hashtag
     tags = sanitizar_tags(etiquetas_str, max_tags=20, max_chars=480)
     
     if len(tags) < 5:
-        print("⚠️ No hay suficientes tags válidos. Usando tags de respaldo.")
+        print("️ No hay suficientes tags válidos. Usando tags de respaldo.")
         tags = ["bitcoin", "crypto", "inversión", "blockchain", "trading",
                 "finanzas", "oro", "criptomonedas", "análisis de mercado", "noticias crypto"]
     
-    print(f"\n📝 DIAGNÓSTICO TAGS:")
+    print(f"\n DIAGNÓSTICO TAGS:")
     total_chars = 0
     for i, tag in enumerate(tags, 1):
         print(f"   {i}. '{tag}' ({len(tag)} chars)")
@@ -1464,7 +1473,7 @@ def subir_a_youtube(video_path, titulo, etiquetas_str, gancho, contexto, hashtag
 
 {seo_description if seo_description else contexto}
 
-🔴 SUSCRÍBETE: {CANAL_LINK}
+ SUSCRÍBETE: {CANAL_LINK}
 
 📖 {fuente}
 
@@ -1531,7 +1540,7 @@ def inicializar_archivos_json():
     }
     for archivo, contenido in archivos_needed.items():
         if not os.path.exists(archivo):
-            print(f"📝 Creando: {archivo}")
+            print(f" Creando: {archivo}")
             with open(archivo, "w", encoding="utf-8") as f:
                 json.dump(contenido, f, indent=2, ensure_ascii=False)
 
@@ -1663,7 +1672,7 @@ def main():
     limpiar_archivos_temporales()
     
     print(f"\n✅ Short publicado!")
-    print(f"🔗 https://youtu.be/{video_id}")
+    print(f" https://youtu.be/{video_id}")
     print(f"📊 Categoría: {categoria.upper()}")
 
 if __name__ == "__main__":
