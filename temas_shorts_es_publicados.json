@@ -84,6 +84,11 @@
       "tema": "Análisis del Hash Rate de Minería",
       "tipo": "analysis",
       "fecha": "2026-10-13"
+    },
+    {
+      "tema": "Colapso de Terra Luna",
+      "tipo": "historical",
+      "fecha": "2026-10-13"
     }
   ]
 }
