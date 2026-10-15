@@ -104,6 +104,11 @@
       "tema": "Historia Crypto de Venezuela",
       "tipo": "historical",
       "fecha": "2026-10-15"
+    },
+    {
+      "tema": "Qué es una Hardware Wallet",
+      "tipo": "educational",
+      "fecha": "2026-10-15"
     }
   ]
 }
