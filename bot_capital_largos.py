@@ -1,6 +1,7 @@
 import asyncio
 from datetime import datetime, timedelta
 import json
+import json5
 import os
 import random
 import re
@@ -332,32 +333,46 @@ def generar_idea_video_largo(tipo, fecha_actual, trends_data=None):
     seo_keywords = trends_data.get("high_volume_keywords", []) if trends_data and "high_volume_keywords" in trends_data else []
     keywords_text = ", ".join(seo_keywords[:5]) if seo_keywords else "Bitcoin, crypto, oro, inversión"
     
+    titulos_pub = cargar_titulos_publicados()["titulos"][-10:]
+    titulos_referencia = "\n".join([f"- {t}" for t in titulos_pub]) if titulos_pub else "Ninguno aún."
+    
     prompt = f"""
 Eres un ESTRATEGA DE CONTENIDO VIRAL y EXPERTO SEO para videos de YouTube en ESPAÑOL (7-9 minutos).
 FECHA: {fecha_actual}
 CATEGORÍA: {categoria_seleccionada.upper()}
 TEMA: {tema_sugerido}
 {fed_instruction}
+
+🚨 PROHIBICIÓN ABSOLUTA DE PATRONES REPETITIVOS:
+Está TERMINANTEMENTE PROHIBIDO usar frases cliché como "La Verdad Definitiva", "Guía Definitiva", "El Secreto Definitivo" o terminar todos los títulos con "2026". 
+Debes usar una variedad REAL de estructuras: preguntas provocadoras, afirmaciones contundentes, listas numéricas, comparaciones directas o narrativas de historia. 
+Ejemplos de títulos con ALTA VARIABILIDAD: 
+- "¿Por qué el oro está devorando al Bitcoin?"
+- "3 Errores que destruyen tu portafolio crypto"
+- "El colapso del sistema: lo que nadie te dice"
+- "Cómo proteger tu dinero cuando todo cae"
+
+Estos son los últimos títulos publicados. TU NUEVO TÍTULO DEBE SER RADICALMENTE DIFERENTE EN ESTRUCTURA Y ENFOQUE:
+{titulos_referencia}
+
 🎯 KEYWORDS SEO: {keywords_text}
 🚫 REGLA DE IDIOMA: DEBES RESPONDER COMPLETAMENTE EN ESPAÑOL. NO USES INGLÉS.
+
 Genera 5 IDEAS DE VIDEO LONG-FORM optimizadas para SEO y viralidad.
 REQUISITOS:
-✅ Título: 60-70 caracteres (SEO optimizado, keyword al inicio)
-✅ 1 emoji máximo
-✅ Keyword PRIMARIA al inicio (primeras 3 palabras)
-✅ Crear CURIOSIDAD
-✅ Usar POWER WORDS: Completo, Definitivo, Verdad, Guía, Análisis, Secreto
-✅ NO usar Federal Reserve / Fed / FOMC / Powell
-✅ Adecuado para video de 7-9 minutos
-✅ Coincidir con categoría: {categoria_seleccionada}
+✅ Título: 60-70 caracteres, keyword al inicio, 1 emoji máximo.
+✅ Crear CURIOSIDAD real, no clichés.
+✅ NO usar Federal Reserve / Fed / FOMC / Powell.
+✅ Adecuado para video de 7-9 minutos.
+
 Devuelve JSON:
 {{
     "best_idea": {{
-        "title": "Título final (60-70 chars, EN ESPAÑOL)",
+        "title": "Título final (60-70 chars, EN ESPAÑOL, estructura radicalmente nueva)",
         "hook_30sec": "Primeros 30 segundos (EN ESPAÑOL)",
         "description": "Qué aprenderán los viewers (EN ESPAÑOL)",
-        "formula_used": "Nombre de fórmula",
-        "psychology_trigger": "curiosity/education",
+        "formula_used": "Nombre de la estructura usada (ej: Pregunta provocadora)",
+        "psychology_trigger": "curiosity/education/fear",
         "type": "{categoria_seleccionada}",
         "seo_keywords": ["kw1", "kw2", "kw3"]
     }},
@@ -413,21 +428,26 @@ def generar_guion_largo(tipo, fecha_actual, idea=None):
     fed_instruction = "🚫 NO menciones Federal Reserve, Fed rate, FOMC, Jerome Powell.\n" if fed_prohibida else ""
     
     prompt = f"""
-Eres un GUIONISTA PROFESIONAL para videos de YouTube en ESPAÑOL (7-9 minutos).
+Eres un GUIONISTA PROFESIONAL y EXPERTO EN SEO DE YOUTUBE (Nivel VidIQ Premium) para videos en ESPAÑOL (7-9 minutos).
+
 REGLA DE IDIOMA: DEBES RESPONDER COMPLETAMENTE EN ESPAÑOL. NO USES INGLÉS.
+
 IDEA DE VIDEO: "{tema_elegido}"
 HOOK: "{hook_sugerido}"
 TIPO: {tipo.upper()}
 FECHA: {fecha_actual}
 {fed_instruction}
+
 REGLA DE FECHA:
 🚫 NO uses fechas pasadas como 2020-2024.
 ✅ Usa año actual: {fecha_actual.split()[-1]}.
 ✅ Usa "hoy", "esta semana", "recientemente" para eventos recientes.
+
 🎯 INCLUIR 3 LLAMADAS A LA ACCIÓN (CTA) EN EL GUION:
 1. DESPUÉS DEL INTRO (0:45-1:00): "Si te gustan los análisis basados en datos y no en hype, suscríbete ahora y activa la campana 🔔"
 2. A LA MITAD DEL VIDEO (4:00-4:30): Pregunta reflexiva + invitación a suscribirse
 3. AL FINAL (8:30-9:00): Agradecimiento + like + suscripción + teaser del próximo video
+
 ESTRUCTURA DEL GUION (7 bloques, 1300-1500 palabras total):
 [HOOK - 0:00] Interrupción de patrón + promesa (100-150 palabras)
 [INTRO - 0:30] Contexto y por qué importa (200-250 palabras)
@@ -436,13 +456,16 @@ ESTRUCTURA DEL GUION (7 bloques, 1300-1500 palabras total):
 [CAPÍTULO 3 - 5:30] Insights Avanzados/Solución (300-350 palabras)
 [CAPÍTULO 4 - 7:30] Pasos de Acción (250-300 palabras)
 [CIERRE - 8:30] Resumen + CTA (150-200 palabras)
+
 TÁCTICAS DE RETENCIÓN:
 - "Pero aquí es donde se pone interesante..."
 - "Ahora, aquí es donde la mayoría comete un error..."
 - "Te mostraré exactamente cómo..."
 - "Los datos muestran algo sorprendente..."
 - "Esto es de lo que nadie está hablando..."
+
 NÚMEROS: Escribe con LETRAS ("cuatrocientos" no "400")
+
 PROMPTS DE IMAGEN (uno por segmento, debe coincidir con el contenido):
 - HOOK: "escena financiera dramática, luces neón urgentes, alto contraste, cinematográfico 8k"
 - INTRO: "fondo profesional finanzas, gráficos y datos, neón azul y oro"
@@ -451,23 +474,28 @@ PROMPTS DE IMAGEN (uno por segmento, debe coincidir con el contenido):
 - CAPÍTULO 3: "visuales orientados a solución, tendencias ascendentes, éxito, acentos dorados"
 - CAPÍTULO 4: "visual de pasos de acción, gráficos claros, profesional, verde azulado y ámbar"
 - CIERRE: "visual de llamada a la acción, atractivo, dinámico, violeta y naranja"
-HASHTAGS (5-8 específicos): Ejemplo "#Bitcoin #Crypto #AnalisisBitcoin #NoticiasCrypto #AnalisisMercado"
-TAGS (20-25 keywords, simples, SIN caracteres especiales):
-Ejemplos: "minería bitcoin", "trading crypto", "conceptos básicos inversión"
-- Separados por coma SOLAMENTE
-- SIN #, $, %, &, o cualquier caracter especial
-- Cada tag máximo 30 caracteres
-- Máximo 4 palabras por tag
-- Máximo 25 tags total
-TÍTULOS YA PUBLICADOS (NO REPETIR):
+
+🚨 PROHIBICIÓN ABSOLUTA DE PATRONES REPETITIVOS EN TÍTULOS Y TAGS:
+Está TERMINANTEMENTE PROHIBIDO usar frases cliché como "La Verdad Definitiva", "Guía Definitiva", "El Secreto Definitivo" o terminar todo con "2026". 
+Estos son los TÍTULOS YA PUBLICADOS. Tu nuevo título y tus tags DEBEN SER RADICALMENTE DIFERENTES en estructura y palabras clave:
 {titulos_referencia}
+
+🚨 REGLA CRÍTICA DE TAGS (SEO NIVEL VIDlQ PREMIUM):
+Genera exactamente 25 tags separados por coma, SIN caracteres especiales (#, $, %, &), máximo 30 caracteres por tag, máximo 4 palabras por tag.
+DEBES INCLUIR ESTA MEZCLA EXACTA PARA MAXIMIZAR EL ALCANCE:
+- 5 Tags Generales/Broad (ej: Bitcoin, Criptomonedas, Inversión, Finanzas, Oro)
+- 5 Tags Precisos/Específicos (ej: Analisis tecnico Bitcoin, Ciclo halving, Estrategia inversion)
+- 10 Tags de Cola Larga / Long-tail (ej: como proteger tu portafolio crypto, mejores estrategias de inversion, que es el dinero digital)
+- 5 Tags de Cola Corta / Short-tail (ej: BTC, Oro, Trading, DeFi, Web3)
+PROHIBIDO repetir tags exactos de videos anteriores. La variabilidad es obligatoria.
+
 Devuelve JSON:
 {{
-    "title": "Título 60-70 chars con emoji (EN ESPAÑOL, SIN Fed)",
-    "alternative_title": "Alternativa (EN ESPAÑOL)",
+    "title": "Título 60-70 chars con emoji (EN ESPAÑOL, SIN Fed, estructura radicalmente nueva)",
+    "alternative_title": "Alternativa con enfoque totalmente distinto (EN ESPAÑOL)",
     "keywords": ["kw1", "kw2", "kw3"],
     "description": "Descripción completa con capítulos y hashtags (EN ESPAÑOL)",
-    "tags": "20-25 tags simples separados por coma (SIN caracteres especiales)",
+    "tags": "tag1, tag2, tag3, ... (25 tags siguiendo estrictamente la regla de mezcla VidIQ Premium)",
     "dynamic_hashtags": "#Bitcoin #Crypto #AnalisisBitcoin",
     "script": "Guion completo 1300-1500 palabras con 7 bloques marcados (EN ESPAÑOL)",
     "segments": [
@@ -510,7 +538,6 @@ Devuelve JSON:
                 try:
                     result = json.loads(json_str)
                 except json.JSONDecodeError:
-                    import json5
                     result = json5.loads(json_str)
             else:
                 raise ValueError("No se encontró JSON")
