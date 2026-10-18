@@ -346,7 +346,7 @@ def generar_imagen_vertical(prompt, tema="", bloque="", intentos=10):
                         _used_image_urls.add(img_url)
                         return img_url
         except Exception as e:
-            print(f"      ️ Error: {e}")
+            print(f"      ⚠️ Error: {e}")
         
         if intento < intentos - 1:
             time.sleep(10)
@@ -573,6 +573,15 @@ TEMA SUGERIDO: {tema_sugerido}
 
 {fed_instruction}
 
+🚨 PROHIBICIÓN ABSOLUTA DE PATRONES REPETITIVOS:
+Está TERMINANTEMENTE PROHIBIDO usar frases cliché como "El Secreto de...", "La Verdad Oculta de...", "El Secreto del...", o empezar todos los títulos con la misma palabra (ej. "Bitcoin: ...").
+Debes usar una variedad REAL de estructuras: preguntas provocadoras, afirmaciones contundentes, listas numéricas, comparaciones directas o narrativas de historia.
+Ejemplos de títulos con ALTA VARIABILIDAD: 
+- "¿Por qué el oro está devorando al Bitcoin?"
+- "3 Errores que destruyen tu portafolio crypto"
+- "El colapso del sistema: lo que nadie te dice"
+- "Cómo proteger tu dinero cuando todo cae"
+
 🎯 KEYWORDS SEO DE ALTO VOLUMEN:
 {keywords_text}
 
@@ -601,11 +610,12 @@ REQUISITOS:
 ✅ NO usar Fed / FOMC / Powell / tasa de interés en títulos
 ✅ Debe ser adecuado para short de 40-50 segundos
 ✅ TODO EN ESPAÑOL
+✅ VARIABILIDAD TOTAL: No repitas estructuras de títulos anteriores.
 
 Devuelve JSON:
 {{
     "best_idea": {{
-        "title": "Título final (50-60 chars, SIN Fed, EN ESPAÑOL)",
+        "title": "Título final (50-60 chars, SIN Fed, EN ESPAÑOL, estructura totalmente nueva)",
         "hook_3sec": "Primeros 3 segundos del guion (EN ESPAÑOL)",
         "description": "Explicación en una oración (EN ESPAÑOL)",
         "formula_used": "Nombre de fórmula",
@@ -810,8 +820,8 @@ def modificar_titulo_para_evitar_duplicado(titulo_original, titulos_existentes):
     sufijos_unicos = ["AHORA", "HOY", "2026", "JUSTO AHORA", "ACTUALIZACIÓN",
                      "EXCLUSIVO", "EN VIVO", "NUEVOS DATOS", "URGENTE", "ALERTA"]
     
-    prefijos_unicos = [" URGENTE:", "⚠️ ALERTA:", "📈 ACTUALIZACIÓN:", "💰 ALERTA:",
-                      "🔥 CALIENTE:", "🔴 EN VIVO:", " NUEVO:"]
+    prefijos_unicos = ["🚨 URGENTE:", "⚠️ ALERTA:", "📈 ACTUALIZACIÓN:", "💰 ALERTA:",
+                      "🔥 CALIENTE:", "🔴 EN VIVO:", "📊 NUEVO:"]
     
     for _ in range(5):
         prefijo = random.choice(prefijos_unicos)
@@ -886,7 +896,7 @@ def tema_ya_publicado(tema, dias=30):
     return False
 
 # ================================================================
-# 📝 GENERAR GUION (ESPAÑOL - CON FILTRO ANTI-FED)
+# 📝 GENERAR GUION (ESPAÑOL - CON FILTRO ANTI-FED Y ANTI-SPAM)
 # ================================================================
 def generar_guion_financiero(categoria, tema_elegido, fecha_actual, idea=None):
     titulos_pub = cargar_titulos_publicados()["titulos"][-20:]
@@ -899,7 +909,7 @@ def generar_guion_financiero(categoria, tema_elegido, fecha_actual, idea=None):
     fed_instruction = ""
     if fed_prohibida:
         fed_instruction = """
- PROHIBICIÓN CRÍTICA (ACTIVA):
+🚫 PROHIBICIÓN CRÍTICA (ACTIVA):
 Hemos publicado recientemente contenido sobre Fed. NO menciones Federal Reserve, tasa Fed, FOMC, Powell, o decisiones de tasas de interés en el guion o título.
 Enfócate en contenido educativo, histórico, psicología o técnico en su lugar.
 """
@@ -910,9 +920,18 @@ Eres un GUIONISTA de YouTube Shorts y EXPERTO SEO en español sobre finanzas/cry
 📌 TEMA: "{titulo_idea}"
 📌 CATEGORÍA: {categoria.upper()}
 📌 HOOK: "{hook_sugerido}"
- FECHA: {fecha_actual}
+📅 FECHA: {fecha_actual}
 
 {fed_instruction}
+
+🚨 PROHIBICIÓN ABSOLUTA DE PATRONES REPETITIVOS:
+Está TERMINANTEMENTE PROHIBIDO usar frases cliché como "El Secreto de...", "La Verdad Oculta de...", "El Secreto del...", o empezar todos los títulos con la misma palabra (ej. "Bitcoin: ...").
+Debes usar una variedad REAL de estructuras: preguntas provocadoras, afirmaciones contundentes, listas numéricas, comparaciones directas o narrativas de historia.
+Ejemplos de títulos con ALTA VARIABILIDAD: 
+- "¿Por qué el oro está devorando al Bitcoin?"
+- "3 Errores que destruyen tu portafolio crypto"
+- "El colapso del sistema: lo que nadie te dice"
+- "Cómo proteger tu dinero cuando todo cae"
 
 REGLAS CRÍTICAS:
 
@@ -920,14 +939,14 @@ REGLAS CRÍTICAS:
    - Declaración impactante + keyword
    - Ejemplos: "Bitcoin acaba de hacer ESTO...", "Por qué 90% de traders..."
 
-2️ ESTRUCTURA (90-110 palabras para 40-50 segundos):
+2️⃣ ESTRUCTURA (90-110 palabras para 40-50 segundos):
    [HOOK 0-3s] Declaración impactante (10 palabras)
    [PROBLEMA 3-10s] Por qué importa (25 palabras)
    [DATOS 10-25s] Hechos/números con keyword (35 palabras)
    [SOLUCIÓN 25-35s] Qué hacer (25 palabras)
    [CIERRE 35-40s] CTA (5 palabras)
 
-3️ SEO:
+3️⃣ SEO:
    - Menciona la KEYWORD PRIMARIA 2-3 veces naturalmente
    - Incluye NÚMEROS (aumenta engagement 40%)
 
@@ -950,14 +969,15 @@ REGLAS CRÍTICAS:
    - 1 emoji, brecha de curiosidad, power words
    - SIN referencias a Fed/FOMC/Powell
    - TODO EN ESPAÑOL
+   - VARIABILIDAD TOTAL: No repitas estructuras de títulos anteriores.
 
-🚫 TÍTULOS YA PUBLICADOS (NO REPETIR):
+🚫 TÍTULOS YA PUBLICADOS (NO REPETIR NI SU ESTRUCTURA):
 {titulos_referencia}
 
 DEVUELVE JSON:
 {{
-    "title": "Título (50-60 chars, emoji, SIN Fed, EN ESPAÑOL)",
-    "alternative_title": "Título alternativo (EN ESPAÑOL)",
+    "title": "Título (50-60 chars, emoji, SIN Fed, EN ESPAÑOL, estructura totalmente nueva)",
+    "alternative_title": "Título alternativo (EN ESPAÑOL, estructura totalmente diferente)",
     "keywords": ["bitcoin", "crypto", "trading", "inversión", "finanzas"],
     "hook_description": "Hook para descripción (90 chars, EN ESPAÑOL)",
     "context_description": "Contexto en una oración (EN ESPAÑOL)",
@@ -1049,7 +1069,7 @@ DEVUELVE JSON:
             if "dynamic_hashtags" not in data:
                 data["dynamic_hashtags"] = "#Bitcoin #Crypto #NoticiasBitcoin #NoticiasCrypto #PrecioBitcoin #AlertaCrypto"
 
-            print(f"   ️ Título: {data['title']}")
+            print(f"   🏷️ Título: {data['title']}")
             return data, tema_elegido, categoria
             
         except Exception as e:
@@ -1057,7 +1077,7 @@ DEVUELVE JSON:
             if intento < 5:
                 time.sleep(10)
 
-    print("️ Todos los intentos fallaron. Generando título forzado único...")
+    print("⚠️ Todos los intentos fallaron. Generando título forzado único...")
     fecha_corta = datetime.now().strftime("%b %d").upper()
     titulo_forzado = f"📊 {tema_elegido[:40]} - {fecha_corta}"
     
@@ -1206,7 +1226,7 @@ def obtener_ruta_fuente():
                     f.write(r.content)
                 print("✅ Fuente Anton descargada")
         except Exception as e:
-            print(f"️ Error descargando fuente: {e}")
+            print(f"⚠️ Error descargando fuente: {e}")
     rutas = ["Anton.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"]
     for ruta in rutas:
         if os.path.exists(ruta):
@@ -1449,11 +1469,11 @@ def subir_a_youtube(video_path, titulo, etiquetas_str, gancho, contexto, hashtag
     tags = sanitizar_tags(etiquetas_str, max_tags=20, max_chars=480)
     
     if len(tags) < 5:
-        print("️ No hay suficientes tags válidos. Usando tags de respaldo.")
+        print("⚠️ No hay suficientes tags válidos. Usando tags de respaldo.")
         tags = ["bitcoin", "crypto", "inversión", "blockchain", "trading",
                 "finanzas", "oro", "criptomonedas", "análisis de mercado", "noticias crypto"]
     
-    print(f"\n DIAGNÓSTICO TAGS:")
+    print(f"\n📝 DIAGNÓSTICO TAGS:")
     total_chars = 0
     for i, tag in enumerate(tags, 1):
         print(f"   {i}. '{tag}' ({len(tag)} chars)")
@@ -1473,7 +1493,7 @@ def subir_a_youtube(video_path, titulo, etiquetas_str, gancho, contexto, hashtag
 
 {seo_description if seo_description else contexto}
 
- SUSCRÍBETE: {CANAL_LINK}
+🔴 SUSCRÍBETE: {CANAL_LINK}
 
 📖 {fuente}
 
@@ -1540,7 +1560,7 @@ def inicializar_archivos_json():
     }
     for archivo, contenido in archivos_needed.items():
         if not os.path.exists(archivo):
-            print(f" Creando: {archivo}")
+            print(f"📝 Creando: {archivo}")
             with open(archivo, "w", encoding="utf-8") as f:
                 json.dump(contenido, f, indent=2, ensure_ascii=False)
 
@@ -1672,7 +1692,7 @@ def main():
     limpiar_archivos_temporales()
     
     print(f"\n✅ Short publicado!")
-    print(f" https://youtu.be/{video_id}")
+    print(f"🔗 https://youtu.be/{video_id}")
     print(f"📊 Categoría: {categoria.upper()}")
 
 if __name__ == "__main__":
