@@ -85,9 +85,9 @@ CATEGORIAS_CONTENIDO = {
             "Estrategia Dollar Cost Averaging Explicada",
             "Diversificación de Portafolio con Crypto y Oro",
             "Entendiendo los Ciclos del Mercado",
-            "Gestión de Riesgos en Inversión Crypto",
+            "Gestión de Riesgos en Inversión",
             "Análisis Técnico Básico",
-            "Análisis Fundamental para Crypto",
+            "Análisis Fundamental para Inversores",
             "Qué es una Billetera Crypto y Cómo Usarla",
             "Staking vs Yield Farming Explicado",
             "Cómo Funcionan los Smart Contracts",
@@ -116,22 +116,22 @@ CATEGORIAS_CONTENIDO = {
             "El Shock Nixon 1971: Cambió el Dinero para Siempre",
             "Auge y Caída de FTX",
             "Colapso de Terra Luna: Historia Completa",
-            "Historia de Silk Road: El Pasado Oscuro de Bitcoin",
-            "Historia del Halving: 2012, 2016, 2020, 2024"
+            "Historia de Silk Road: El Pasado Oscuro",
+            "Historia de los Ciclos de Halving"
         ]
     },
     "analysis": {
         "peso": 15,
         "temas": [
-            "Análisis de Ciclos de Halving de Bitcoin",
+            "Análisis de Ciclos de Mercado",
             "Patrones del Precio del Oro en 50 Años",
             "Análisis de Correlación del Mercado Crypto",
             "Tendencias de Adopción Institucional",
             "Impacto de las CBDCs",
-            "Impacto de la Inflación en Oro y Bitcoin",
+            "Impacto de la Inflación en Oro y Activos",
             "Modelo Stock to Flow Explicado",
             "Análisis On-Chain Básico",
-            "Factores Macroeconómicos que Afectan Crypto",
+            "Factores Macroeconómicos que Afectan el Mercado",
             "Eventos Geopolíticos y Activos Refugio",
             "Dominancia de Bitcoin y Ciclos Altseason",
             "Ratio MVRV y Valoración de Mercado"
@@ -325,13 +325,13 @@ Devuelve JSON:
 def generar_idea_video_largo(tipo, fecha_actual, trends_data=None):
     categoria_seleccionada, tema_sugerido = seleccionar_categoria()
     print(f"📚 Categoría: {categoria_seleccionada.upper()}")
-    print(f"📝 Tema: {tema_sugerido}")
+    print(f"📝 Tema OBLIGATORIO: {tema_sugerido}")
     
     fed_prohibida = verificar_fed_reciente(dias=15)
     fed_instruction = "🚫 CRÍTICO: NO menciones Federal Reserve, Fed rate, FOMC, Jerome Powell.\n" if fed_prohibida else ""
     
     seo_keywords = trends_data.get("high_volume_keywords", []) if trends_data and "high_volume_keywords" in trends_data else []
-    keywords_text = ", ".join(seo_keywords[:5]) if seo_keywords else "Bitcoin, crypto, oro, inversión"
+    keywords_text = ", ".join(seo_keywords[:5]) if seo_keywords else "inversión, finanzas, mercado, oro"
     
     titulos_pub = cargar_titulos_publicados()["titulos"][-10:]
     titulos_referencia = "\n".join([f"- {t}" for t in titulos_pub]) if titulos_pub else "Ninguno aún."
@@ -340,35 +340,34 @@ def generar_idea_video_largo(tipo, fecha_actual, trends_data=None):
 Eres un ESTRATEGA DE CONTENIDO VIRAL y EXPERTO SEO para videos de YouTube en ESPAÑOL (7-9 minutos).
 FECHA: {fecha_actual}
 CATEGORÍA: {categoria_seleccionada.upper()}
-TEMA: {tema_sugerido}
+TEMA OBLIGATORIO: {tema_sugerido}
 {fed_instruction}
+
+🚨 REGLA ABSOLUTA DE VARIEDAD:
+El tema OBLIGATORIO es "{tema_sugerido}". NO hables de Bitcoin a menos que el tema sugerido sea específicamente sobre Bitcoin. Si el tema es sobre Oro, DeFi, NFTs, Historia Financiera, etc., céntrate 100% en ese tema. NO uses "Bitcoin" como comodín por defecto.
 
 🚨 PROHIBICIÓN ABSOLUTA DE PATRONES REPETITIVOS:
 Está TERMINANTEMENTE PROHIBIDO usar frases cliché como "La Verdad Definitiva", "Guía Definitiva", "El Secreto Definitivo" o terminar todos los títulos con "2026". 
 Debes usar una variedad REAL de estructuras: preguntas provocadoras, afirmaciones contundentes, listas numéricas, comparaciones directas o narrativas de historia. 
-Ejemplos de títulos con ALTA VARIABILIDAD: 
-- "¿Por qué el oro está devorando al Bitcoin?"
-- "3 Errores que destruyen tu portafolio crypto"
-- "El colapso del sistema: lo que nadie te dice"
-- "Cómo proteger tu dinero cuando todo cae"
 
-Estos son los últimos títulos publicados. TU NUEVO TÍTULO DEBE SER RADICALMENTE DIFERENTE EN ESTRUCTURA Y ENFOQUE:
+Estos son los últimos títulos publicados. TU NUEVO TÍTULO DEBE SER RADICALMENTE DIFERENTE EN ESTRUCTURA, TEMA Y ENFOQUE:
 {titulos_referencia}
 
 🎯 KEYWORDS SEO: {keywords_text}
 🚫 REGLA DE IDIOMA: DEBES RESPONDER COMPLETAMENTE EN ESPAÑOL. NO USES INGLÉS.
 
-Genera 5 IDEAS DE VIDEO LONG-FORM optimizadas para SEO y viralidad.
+Genera 5 IDEAS DE VIDEO LONG-FORM optimizadas para SEO y viralidad, CÉNTRADAS EXCLUSIVAMENTE EN EL TEMA OBLIGATORIO: "{tema_sugerido}".
 REQUISITOS:
 ✅ Título: 60-70 caracteres, keyword al inicio, 1 emoji máximo.
 ✅ Crear CURIOSIDAD real, no clichés.
 ✅ NO usar Federal Reserve / Fed / FOMC / Powell.
 ✅ Adecuado para video de 7-9 minutos.
+✅ El título debe reflejar EXACTAMENTE el tema "{tema_sugerido}".
 
 Devuelve JSON:
 {{
     "best_idea": {{
-        "title": "Título final (60-70 chars, EN ESPAÑOL, estructura radicalmente nueva)",
+        "title": "Título final (60-70 chars, EN ESPAÑOL, estructura radicalmente nueva, centrado en '{tema_sugerido}')",
         "hook_30sec": "Primeros 30 segundos (EN ESPAÑOL)",
         "description": "Qué aprenderán los viewers (EN ESPAÑOL)",
         "formula_used": "Nombre de la estructura usada (ej: Pregunta provocadora)",
@@ -419,7 +418,14 @@ def generar_guion_largo(tipo, fecha_actual, idea=None):
             idea = idea_data["best_idea"]
             print(f"   ✅ Idea: {idea['title']}")
         else:
-            idea = {"title": "Guía de Inversión en Bitcoin", "hook_30sec": "Bitcoin está cambiando todo...", "description": "Guía completa", "type": tipo}
+            fallback_temas = [
+                "Guía de Inversión en Oro y Metales Preciosos",
+                "Cómo Funciona Realmente la Tecnología Blockchain",
+                "Historia de las Grandes Crisis Financieras",
+                "Análisis Profundo de los Ciclos de Mercado"
+            ]
+            tema_fallback = random.choice(fallback_temas)
+            idea = {"title": tema_fallback, "hook_30sec": "El mercado está cambiando...", "description": "Guía completa", "type": tipo}
 
     tema_elegido = idea["title"]
     hook_sugerido = idea.get("hook_30sec", "")
@@ -433,10 +439,14 @@ Eres un GUIONISTA PROFESIONAL y EXPERTO EN SEO DE YOUTUBE (Nivel VidIQ Premium) 
 REGLA DE IDIOMA: DEBES RESPONDER COMPLETAMENTE EN ESPAÑOL. NO USES INGLÉS.
 
 IDEA DE VIDEO: "{tema_elegido}"
+TEMA CENTRAL OBLIGATORIO: {tema_elegido}
 HOOK: "{hook_sugerido}"
 TIPO: {tipo.upper()}
 FECHA: {fecha_actual}
 {fed_instruction}
+
+🚨 REGLA ABSOLUTA DE VARIEDAD DE TEMAS:
+El tema central es "{tema_elegido}". Céntrate EXCLUSIVAMENTE en este tema. NO menciones "Bitcoin" a menos que el tema sea explícitamente sobre Bitcoin. Si el tema es sobre Oro, DeFi, NFTs, Historia Financiera, etc., NO hables de Bitcoin. Respeta el tema asignado al 100%.
 
 REGLA DE FECHA:
 🚫 NO uses fechas pasadas como 2020-2024.
@@ -483,20 +493,20 @@ Estos son los TÍTULOS YA PUBLICADOS. Tu nuevo título y tus tags DEBEN SER RADI
 🚨 REGLA CRÍTICA DE TAGS (SEO NIVEL VIDlQ PREMIUM):
 Genera exactamente 25 tags separados por coma, SIN caracteres especiales (#, $, %, &), máximo 30 caracteres por tag, máximo 4 palabras por tag.
 DEBES INCLUIR ESTA MEZCLA EXACTA PARA MAXIMIZAR EL ALCANCE:
-- 5 Tags Generales/Broad (ej: Bitcoin, Criptomonedas, Inversión, Finanzas, Oro)
-- 5 Tags Precisos/Específicos (ej: Analisis tecnico Bitcoin, Ciclo halving, Estrategia inversion)
-- 10 Tags de Cola Larga / Long-tail (ej: como proteger tu portafolio crypto, mejores estrategias de inversion, que es el dinero digital)
-- 5 Tags de Cola Corta / Short-tail (ej: BTC, Oro, Trading, DeFi, Web3)
+- 5 Tags Generales/Broad (ej: Inversión, Finanzas, Oro, Mercado, Economía)
+- 5 Tags Precisos/Específicos (ej: Analisis tecnico, Ciclo de mercado, Estrategia inversion)
+- 10 Tags de Cola Larga / Long-tail (ej: como proteger tu portafolio, mejores estrategias de inversion, que es el dinero digital)
+- 5 Tags de Cola Corta / Short-tail (ej: Oro, Trading, DeFi, Web3, Inversion)
 PROHIBIDO repetir tags exactos de videos anteriores. La variabilidad es obligatoria.
 
 Devuelve JSON:
 {{
-    "title": "Título 60-70 chars con emoji (EN ESPAÑOL, SIN Fed, estructura radicalmente nueva)",
+    "title": "Título 60-70 chars con emoji (EN ESPAÑOL, SIN Fed, estructura radicalmente nueva, centrado en '{tema_elegido}')",
     "alternative_title": "Alternativa con enfoque totalmente distinto (EN ESPAÑOL)",
     "keywords": ["kw1", "kw2", "kw3"],
     "description": "Descripción completa con capítulos y hashtags (EN ESPAÑOL)",
     "tags": "tag1, tag2, tag3, ... (25 tags siguiendo estrictamente la regla de mezcla VidIQ Premium)",
-    "dynamic_hashtags": "#Bitcoin #Crypto #AnalisisBitcoin",
+    "dynamic_hashtags": "#Inversion #Finanzas #Mercado",
     "script": "Guion completo 1300-1500 palabras con 7 bloques marcados (EN ESPAÑOL)",
     "segments": [
         {{"block": "HOOK", "text": "texto (~100-150 palabras, EN ESPAÑOL)", "image_prompt": "escena financiera dramática", "timestamp": "0:00"}},
@@ -508,7 +518,7 @@ Devuelve JSON:
         {{"block": "CIERRE", "text": "texto (~150-200 palabras, EN ESPAÑOL)", "image_prompt": "visual llamada a la acción", "timestamp": "8:30"}}
     ],
     "cover_words": "2-3 palabras para miniatura",
-    "thumbnail_prompt": "Bitcoin iluminación dramática, amarillo y rojo sobre negro, espacio para texto"
+    "thumbnail_prompt": "Iluminación dramática, amarillo y rojo sobre negro, espacio para texto"
 }}
 """
     url = "https://api.deepseek.com/v1/chat/completions"
@@ -547,9 +557,9 @@ Devuelve JSON:
             print(f"📊 Palabras del guion: {palabras}")
             
             if "thumbnail_prompt" not in result:
-                result["thumbnail_prompt"] = "Bitcoin iluminación dramática, amarillo y rojo sobre negro"
+                result["thumbnail_prompt"] = "Iluminación dramática, amarillo y rojo sobre negro, espacio para texto"
             if "dynamic_hashtags" not in result:
-                result["dynamic_hashtags"] = ""
+                result["dynamic_hashtags"] = "#Inversion #Finanzas #Mercado"
             
             for seg in result.get("segments", []):
                 if not seg.get("image_prompt") or len(seg["image_prompt"].split()) < 5:
@@ -1244,7 +1254,7 @@ def subir_a_youtube(video_path, titulo, etiquetas_str, descripcion, miniatura_pa
     tags = sanitizar_tags(etiquetas_str, max_tags=25, max_chars=500)
     if len(tags) < 5:
         print("⚠️ No hay suficientes tags válidos. Usando tags de respaldo.")
-        tags = ["bitcoin", "crypto", "inversión", "blockchain", "trading", "finanzas", "oro", "criptomonedas", "análisis de mercado", "noticias crypto"][:25]
+        tags = ["inversion", "finanzas", "mercado", "oro", "economia", "blockchain", "trading", "criptomonedas", "analisis de mercado", "noticias crypto"][:25]
     
     print(f"\n📝 DIAGNÓSTICO TAGS:")
     print(f"   Total tags: {len(tags)}")
@@ -1254,7 +1264,7 @@ def subir_a_youtube(video_path, titulo, etiquetas_str, descripcion, miniatura_pa
         total_chars += len(tag) + 1
     print(f"   Longitud total: {total_chars} chars (límite YouTube: 500)")
     
-    hashtags_fijos = "#Finanzas #Inversión #Crypto"
+    hashtags_fijos = "#Finanzas #Inversion #Mercado"
     if dynamic_hashtags:
         dynamic_hashtags = sanitizar_hashtags(dynamic_hashtags, max_tags=6)
         hashtags_final = f"{dynamic_hashtags} {hashtags_fijos}"
