@@ -234,6 +234,11 @@
       "tema": "Entendiendo Blockchain en 60 Segundos",
       "tipo": "educational",
       "fecha": "2026-10-28"
+    },
+    {
+      "tema": "Análisis On-Chain Básico",
+      "tipo": "analysis",
+      "fecha": "2026-10-28"
     }
   ]
 }
