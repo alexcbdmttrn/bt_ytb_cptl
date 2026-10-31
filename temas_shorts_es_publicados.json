@@ -259,6 +259,11 @@
       "tema": "Sesgo de Exceso de Confianza en Trading",
       "tipo": "psychology",
       "fecha": "2026-10-30"
+    },
+    {
+      "tema": "Análisis del Hash Rate de Minería",
+      "tipo": "analysis",
+      "fecha": "2026-10-31"
     }
   ]
 }
