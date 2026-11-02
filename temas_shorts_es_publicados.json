@@ -274,6 +274,11 @@
       "tema": "Colapso de Terra Luna",
       "tipo": "historical",
       "fecha": "2026-11-01"
+    },
+    {
+      "tema": "Qué es una Hardware Wallet",
+      "tipo": "educational",
+      "fecha": "2026-11-01"
     }
   ]
 }
