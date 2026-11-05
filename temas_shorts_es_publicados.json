@@ -309,6 +309,11 @@
       "tema": "Indicadores de Sentimiento del Mercado",
       "tipo": "analysis",
       "fecha": "2026-11-04"
+    },
+    {
+      "tema": "Hack de Mt Gox Explicado",
+      "tipo": "historical",
+      "fecha": "2026-11-05"
     }
   ]
 }
