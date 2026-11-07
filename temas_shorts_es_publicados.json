@@ -329,6 +329,11 @@
       "tema": "Cómo Funcionan los Smart Contracts",
       "tipo": "educational",
       "fecha": "2026-11-06"
+    },
+    {
+      "tema": "Cómo Funcionan los Mecanismos de Consenso",
+      "tipo": "educational",
+      "fecha": "2026-11-07"
     }
   ]
 }
